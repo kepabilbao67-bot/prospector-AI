@@ -18,6 +18,8 @@ const pageTitles: Record<string, string> = {
   "/revenue": "Ingresos",
   "/import": "Importar",
   "/onboarding": "Configuración Inicial",
+  "/calendar": "Agenda",
+  "/automations": "Automatizaciones",
 };
 
 export function TopBar() {

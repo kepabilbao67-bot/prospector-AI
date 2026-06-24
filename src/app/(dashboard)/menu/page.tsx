@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 const menuItems = [
+  { name: "Agenda", href: "/calendar", icon: "📅", description: "Plan del día" },
   { name: "Pipeline", href: "/pipeline", icon: "🎯", description: "Kanban de ventas" },
   { name: "Campañas", href: "/campaigns", icon: "🚀", description: "Secuencias automatizadas" },
+  { name: "Automatizaciones", href: "/automations", icon: "🤖", description: "Reglas automáticas" },
   { name: "Ingresos", href: "/revenue", icon: "💰", description: "Tracking de ventas" },
   { name: "Templates", href: "/templates", icon: "📝", description: "Mensajes personalizables" },
   { name: "Productos", href: "/products", icon: "🛍️", description: "Tu catálogo de servicios" },
