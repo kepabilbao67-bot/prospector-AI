@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS ============
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  avatar    String?
+  plan      String   @default("free") // free, pro, enterprise
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts    Contact[]
+  campaigns   Campaign[]
+  templates   Template[]
+  taskQueues  TaskQueue[]
+  networkAccounts NetworkAccount[]
+}
+
+// ============ NETWORK ACCOUNTS ============
+model NetworkAccount {
+  id          String   @id @default(uuid())
+  userId      String
+  network     String   // linkedin, fiverr, twitter, instagram, email
+  accountName String
+  credentials String?  // encrypted JSON
+  isActive    Boolean  @default(true)
+  dailyLimit  Int      @default(50)
+  usedToday   Int      @default(0)
+  lastResetAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============ CONTACTS (CRM) ============
+model Contact {
+  id          String   @id @default(uuid())
+  userId      String
+  firstName   String
+  lastName    String?
+  email       String?
+  phone       String?
+  company     String?
+  jobTitle    String?
+  network     String   // linkedin, fiverr, twitter, instagram, email, other
+  networkId   String?  // ID en la red social
+  profileUrl  String?
+  avatarUrl   String?
+  tags        String   @default("[]") // JSON array of tags
+  notes       String?
+  status      String   @default("new") // new, contacted, replied, qualified, converted, lost
+  score       Int      @default(0) // lead scoring
+  lastContactedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignContacts  CampaignContact[]
+  messages          Message[]
+
+  @@index([userId])
+  @@index([network])
+  @@index([status])
+}
+
+// ============ CAMPAIGNS ============
+model Campaign {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  network     String   // linkedin, fiverr, twitter, instagram, email, multi
+  status      String   @default("draft") // draft, active, paused, completed
+  startDate   DateTime?
+  endDate     DateTime?
+  settings    String   @default("{}") // JSON: daily limits, hours, etc.
+  stats       String   @default("{}") // JSON: sent, replied, converted counts
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps             CampaignStep[]
+  campaignContacts  CampaignContact[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ============ CAMPAIGN STEPS (SEQUENCE) ============
+model CampaignStep {
+  id          String   @id @default(uuid())
+  campaignId  String
+  order       Int
+  type        String   // message, connection_request, follow, like, visit_profile, wait, condition
+  network     String   // linkedin, fiverr, twitter, instagram, email
+  templateId  String?
+  config      String   @default("{}") // JSON: delay hours, conditions, etc.
+  delayHours  Int      @default(24)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template Template? @relation(fields: [templateId], references: [id])
+
+  @@index([campaignId])
+}
+
+// ============ CAMPAIGN CONTACTS ============
+model CampaignContact {
+  id          String   @id @default(uuid())
+  campaignId  String
+  contactId   String
+  currentStep Int      @default(0)
+  status      String   @default("pending") // pending, in_progress, completed, failed, replied
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+  @@index([contactId])
+}
+
+// ============ TEMPLATES ============
+model Template {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  network     String   // linkedin, fiverr, twitter, instagram, email
+  type        String   // message, connection_request, email, comment
+  subject     String?  // for emails
+  content     String   // supports variables like {{firstName}}, {{company}}
+  variables   String   @default("[]") // JSON array of variable names
+  isDefault   Boolean  @default(false)
+  usageCount  Int      @default(0)
+  replyRate   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  steps CampaignStep[]
+
+  @@index([userId])
+  @@index([network])
+}
+
+// ============ MESSAGES ============
+model Message {
+  id          String   @id @default(uuid())
+  contactId   String
+  network     String
+  direction   String   // sent, received
+  type        String   // message, connection_request, email, comment
+  subject     String?
+  content     String
+  status      String   @default("sent") // queued, sent, delivered, read, replied, failed
+  sentAt      DateTime?
+  readAt      DateTime?
+  repliedAt   DateTime?
+  metadata    String   @default("{}") // JSON extra data
+  createdAt   DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([network])
+  @@index([status])
+}
+
+// ============ TASK QUEUE ============
+model TaskQueue {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // send_message, connect, follow, like, visit, scrape
+  network     String
+  payload     String   // JSON with task details
+  status      String   @default("pending") // pending, processing, completed, failed, cancelled
+  priority    Int      @default(5) // 1-10, higher = more priority
+  scheduledAt DateTime
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+  retries     Int      @default(0)
+  maxRetries  Int      @default(3)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// ============ ANALYTICS ============
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  network   String
+  eventType String   // message_sent, reply_received, connection_accepted, profile_viewed, conversion
+  metadata  String   @default("{}") // JSON
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([network])
+  @@index([eventType])
+  @@index([createdAt])
+}
