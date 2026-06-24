@@ -1,23 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { StatCard } from "@/components/ui/stat-card";
-import { getNetworkIcon } from "@/lib/utils";
 
 interface AnalyticsData {
-  stats: {
-    messagesSent: number;
-    repliesReceived: number;
-    connectionsAccepted: number;
-    profilesViewed: number;
-    conversions: number;
-  };
+  stats: { messagesSent: number; repliesReceived: number; connectionsAccepted: number; profilesViewed: number; conversions: number };
   replyRate: string;
   conversionRate: string;
-  chartData: { date: string; [key: string]: string | number }[];
   networkStats: Record<string, Record<string, number>>;
-  totalEvents: number;
 }
+
+const networkLabels: Record<string, string> = {
+  linkedin: "LinkedIn", fiverr: "Fiverr", twitter: "Twitter", instagram: "Instagram", email: "Email",
+};
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -26,153 +20,88 @@ export default function AnalyticsPage() {
 
   async function loadAnalytics() {
     setLoading(true);
-    const res = await fetch(`/api/analytics?days=${days}`);
-    const analyticsData = await res.json();
-    setData(analyticsData);
+    try {
+      const res = await fetch(`/api/analytics?days=${days}`);
+      setData(await res.json());
+    } catch { /* demo data from API */ }
     setLoading(false);
   }
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [days]);
+  useEffect(() => { loadAnalytics(); }, [days]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+  if (loading || !data) {
+    return <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>;
   }
 
-  if (!data) return null;
-
-  const maxEvents = Math.max(
-    ...data.chartData.map((d) =>
-      Object.values(d).reduce<number>((sum, v) => (typeof v === "number" ? sum + v : sum), 0)
-    ),
-    1
-  );
+  const { stats } = data;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-500 mt-1">Rendimiento de tus campañas de prospección</p>
-        </div>
-        <div className="flex gap-2">
+        <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
+        <div className="flex gap-1">
           {[7, 14, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                days === d
-                  ? "bg-blue-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
+            <button key={d} onClick={() => setDays(d)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium ${days === d ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600"}`}>
               {d}d
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Mensajes Enviados" value={data.stats.messagesSent} icon="📨" />
-        <StatCard title="Respuestas" value={data.stats.repliesReceived} icon="💬" subtitle={`${data.replyRate}% tasa`} />
-        <StatCard title="Conexiones" value={data.stats.connectionsAccepted} icon="🤝" />
-        <StatCard title="Perfiles Vistos" value={data.stats.profilesViewed} icon="👁️" />
-        <StatCard title="Conversiones" value={data.stats.conversions} icon="🎯" subtitle={`${data.conversionRate}% tasa`} />
+      {/* Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {[
+          { label: "Enviados", value: stats.messagesSent },
+          { label: "Respuestas", value: stats.repliesReceived },
+          { label: "Conexiones", value: stats.connectionsAccepted },
+          { label: "Perfiles vistos", value: stats.profilesViewed },
+          { label: "Conversiones", value: stats.conversions },
+        ].map((m) => (
+          <div key={m.label} className="bg-white border border-gray-200 rounded-lg p-4">
+            <p className="text-2xl font-semibold text-gray-900">{m.value}</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">{m.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Chart */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Actividad Diaria</h3>
-        <div className="h-64 flex items-end gap-1">
-          {data.chartData.slice(-30).map((day, i) => {
-            const sent = (day.message_sent as number) || 0;
-            const replies = (day.reply_received as number) || 0;
-            const connections = (day.connection_accepted as number) || 0;
-            const total = sent + replies + connections;
-            const height = (total / maxEvents) * 100;
-
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                <div className="w-full flex flex-col justify-end" style={{ height: "200px" }}>
-                  <div
-                    className="w-full bg-blue-500 rounded-t transition-all group-hover:bg-blue-600"
-                    style={{ height: `${(sent / maxEvents) * 200}px` }}
-                  />
-                  <div
-                    className="w-full bg-green-500"
-                    style={{ height: `${(replies / maxEvents) * 200}px` }}
-                  />
-                  <div
-                    className="w-full bg-purple-500 rounded-b"
-                    style={{ height: `${(connections / maxEvents) * 200}px` }}
-                  />
-                </div>
-                {i % 5 === 0 && (
-                  <span className="text-[10px] text-gray-400 rotate-45">
-                    {day.date?.toString().slice(5)}
-                  </span>
-                )}
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs p-2 rounded-lg whitespace-nowrap z-10">
-                  <p>{day.date?.toString()}</p>
-                  <p>📨 {sent} enviados</p>
-                  <p>💬 {replies} respuestas</p>
-                  <p>🤝 {connections} conexiones</p>
-                </div>
-              </div>
-            );
-          })}
+      {/* Rates */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <p className="text-3xl font-semibold text-gray-900">{data.replyRate}%</p>
+          <p className="text-xs text-gray-500 mt-1">Tasa de respuesta</p>
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gray-700 rounded-full" style={{ width: `${Math.min(parseFloat(data.replyRate), 100)}%` }} />
+          </div>
         </div>
-        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-500"></div>
-            <span className="text-xs text-gray-500">Mensajes</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500"></div>
-            <span className="text-xs text-gray-500">Respuestas</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-500"></div>
-            <span className="text-xs text-gray-500">Conexiones</span>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <p className="text-3xl font-semibold text-gray-900">{data.conversionRate}%</p>
+          <p className="text-xs text-gray-500 mt-1">Tasa de conversión</p>
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-gray-700 rounded-full" style={{ width: `${Math.min(parseFloat(data.conversionRate), 100)}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Network Breakdown */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Rendimiento por Red</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {Object.entries(data.networkStats).map(([network, stats]) => {
-            const sent = stats.message_sent || 0;
-            const replies = stats.reply_received || 0;
+      {/* Network breakdown */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <p className="text-sm font-medium text-gray-900">Rendimiento por red</p>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {Object.entries(data.networkStats).map(([network, networkData]) => {
+            const sent = networkData.message_sent || 0;
+            const replies = networkData.reply_received || 0;
             const rate = sent > 0 ? ((replies / sent) * 100).toFixed(1) : "0";
             return (
-              <div key={network} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-2xl">{getNetworkIcon(network)}</span>
-                  <span className="font-medium text-sm capitalize">{network}</span>
+              <div key={network} className="px-5 py-3.5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{networkLabels[network] || network}</p>
+                  <p className="text-[11px] text-gray-500">{sent} enviados · {replies} respuestas</p>
                 </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Enviados</span>
-                    <span className="font-medium">{sent}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Respuestas</span>
-                    <span className="font-medium text-green-600">{replies}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Tasa</span>
-                    <span className="font-bold text-blue-600">{rate}%</span>
-                  </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">{rate}%</p>
+                  <p className="text-[10px] text-gray-400">respuesta</p>
                 </div>
               </div>
             );
@@ -181,30 +110,24 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Funnel */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Embudo de Conversión</h3>
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <p className="text-sm font-medium text-gray-900 mb-4">Embudo de conversión</p>
         <div className="space-y-3">
           {[
-            { label: "Mensajes Enviados", value: data.stats.messagesSent, color: "bg-blue-500" },
-            { label: "Respuestas Recibidas", value: data.stats.repliesReceived, color: "bg-green-500" },
-            { label: "Conexiones Aceptadas", value: data.stats.connectionsAccepted, color: "bg-purple-500" },
-            { label: "Conversiones", value: data.stats.conversions, color: "bg-emerald-500" },
+            { label: "Mensajes enviados", value: stats.messagesSent, color: "bg-gray-700" },
+            { label: "Respuestas", value: stats.repliesReceived, color: "bg-gray-600" },
+            { label: "Conexiones", value: stats.connectionsAccepted, color: "bg-gray-500" },
+            { label: "Conversiones", value: stats.conversions, color: "bg-gray-900" },
           ].map((step) => {
-            const width = data.stats.messagesSent > 0
-              ? (step.value / data.stats.messagesSent) * 100
-              : 0;
+            const width = stats.messagesSent > 0 ? Math.max((step.value / stats.messagesSent) * 100, 5) : 5;
             return (
-              <div key={step.label} className="flex items-center gap-4">
-                <div className="w-40 text-sm text-gray-600">{step.label}</div>
-                <div className="flex-1 h-8 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${step.color} rounded-full flex items-center justify-end px-3`}
-                    style={{ width: `${Math.max(width, 5)}%` }}
-                  >
-                    <span className="text-white text-xs font-bold">{step.value}</span>
+              <div key={step.label} className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-28 shrink-0">{step.label}</span>
+                <div className="flex-1 h-7 bg-gray-100 rounded overflow-hidden">
+                  <div className={`h-full ${step.color} rounded flex items-center px-2.5`} style={{ width: `${width}%` }}>
+                    <span className="text-white text-[11px] font-medium">{step.value}</span>
                   </div>
                 </div>
-                <span className="text-sm text-gray-500 w-16 text-right">{width.toFixed(1)}%</span>
               </div>
             );
           })}
