@@ -1,72 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { DEMO_CAMPAIGNS } from "@/lib/demo-data";
 
-// GET /api/campaigns - List all campaigns
-export async function GET(request: NextRequest) {
+let inMemoryCampaigns = [...DEMO_CAMPAIGNS];
+
+async function getCampaigns() {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const network = searchParams.get("network");
-
-    const where: Record<string, unknown> = { userId: "default-user" };
-    if (status && status !== "all") where.status = status;
-    if (network && network !== "all") where.network = network;
-
+    const prisma = (await import("@/lib/prisma")).default;
     const campaigns = await prisma.campaign.findMany({
-      where,
-      include: {
-        steps: { orderBy: { order: "asc" } },
-        campaignContacts: true,
-      },
+      where: { userId: "default-user" },
+      include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
       orderBy: { createdAt: "desc" },
     });
+    if (campaigns.length > 0) return campaigns;
+  } catch { /* DB not available */ }
+  return inMemoryCampaigns;
+}
 
+export async function GET() {
+  try {
+    const campaigns = await getCampaigns();
     return NextResponse.json({ campaigns });
-  } catch (error) {
-    console.error("Error fetching campaigns:", error);
-    return NextResponse.json({ error: "Error fetching campaigns" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ campaigns: DEMO_CAMPAIGNS });
   }
 }
 
-// POST /api/campaigns - Create a new campaign
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const campaign = {
+      id: `camp${Date.now()}`,
+      userId: "default-user",
+      name: body.name,
+      description: body.description || null,
+      network: body.network || "multi",
+      status: "draft",
+      settings: JSON.stringify(body.settings || { dailyLimit: 50 }),
+      stats: '{"sent":0,"replied":0,"converted":0}',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      steps: [],
+      campaignContacts: [],
+    };
 
-    const campaign = await prisma.campaign.create({
-      data: {
-        userId: "default-user",
-        name: body.name,
-        description: body.description || null,
-        network: body.network || "multi",
-        status: "draft",
-        settings: JSON.stringify(body.settings || { dailyLimit: 50, startHour: 9, endHour: 18 }),
-      },
-    });
-
-    // Create steps if provided
-    if (body.steps && body.steps.length > 0) {
-      await prisma.campaignStep.createMany({
-        data: body.steps.map((step: Record<string, unknown>, index: number) => ({
-          campaignId: campaign.id,
-          order: index + 1,
-          type: step.type as string,
-          network: (step.network as string) || body.network || "multi",
-          templateId: (step.templateId as string) || null,
-          config: JSON.stringify(step.config || {}),
-          delayHours: (step.delayHours as number) || 24,
-        })),
+    try {
+      const prisma = (await import("@/lib/prisma")).default;
+      const created = await prisma.campaign.create({
+        data: { userId: "default-user", name: body.name, description: body.description, network: body.network || "multi", status: "draft", settings: JSON.stringify(body.settings || {}) },
       });
+      return NextResponse.json(created, { status: 201 });
+    } catch {
+      inMemoryCampaigns.unshift(campaign);
+      return NextResponse.json(campaign, { status: 201 });
     }
-
-    const fullCampaign = await prisma.campaign.findUnique({
-      where: { id: campaign.id },
-      include: { steps: { orderBy: { order: "asc" } } },
-    });
-
-    return NextResponse.json(fullCampaign, { status: 201 });
   } catch (error) {
-    console.error("Error creating campaign:", error);
-    return NextResponse.json({ error: "Error creating campaign" }, { status: 500 });
+    console.error("Error:", error);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

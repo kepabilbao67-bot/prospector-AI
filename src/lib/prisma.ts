@@ -5,19 +5,21 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  // Use Turso in production (when TURSO_DATABASE_URL is set)
+  // Use Turso/Neon in production if configured
   if (process.env.TURSO_DATABASE_URL) {
-    // Dynamic import to avoid build issues when not using Turso
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { PrismaLibSql } = require("@prisma/adapter-libsql");
-    const adapter = new PrismaLibSql({
-      url: process.env.TURSO_DATABASE_URL,
-      authToken: process.env.TURSO_AUTH_TOKEN || "",
-    });
-    return new PrismaClient({ adapter } as never);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { PrismaLibSql } = require("@prisma/adapter-libsql");
+      const adapter = new PrismaLibSql({
+        url: process.env.TURSO_DATABASE_URL,
+        authToken: process.env.TURSO_AUTH_TOKEN || "",
+      });
+      return new PrismaClient({ adapter } as never);
+    } catch {
+      // Fallback to standard client
+    }
   }
 
-  // Use local SQLite in development
   return new PrismaClient();
 }
 
