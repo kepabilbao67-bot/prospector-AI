@@ -2,6 +2,8 @@
 // Uses a built-in AI engine that works WITHOUT external API keys (rule-based + templates)
 // Can optionally connect to OpenAI/Claude for enhanced generation
 
+import { ALL_STRATEGIES, ENGLISH_TEMPLATES, OBJECTION_HANDLERS } from "./ai-templates";
+
 export interface AIContext {
   contact: {
     firstName: string;
@@ -315,7 +317,7 @@ export function generateCampaignStrategy(params: {
   };
 
   const key = `${network}_${objective}`;
-  const strategy = strategies[key] || strategies.linkedin_get_clients;
+  const strategy = strategies[key] || (ALL_STRATEGIES as Record<string, Record<string, unknown>>)[key] || strategies.linkedin_get_clients;
 
   return {
     name: strategy.name as string,
@@ -326,3 +328,6 @@ export function generateCampaignStrategy(params: {
 }
 
 export { PLATFORM_RULES };
+
+// Re-export from ai-templates for API access
+export { OBJECTION_HANDLERS, ENGLISH_TEMPLATES, ALL_STRATEGIES } from "./ai-templates";

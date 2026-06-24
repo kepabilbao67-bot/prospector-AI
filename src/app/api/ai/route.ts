@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMessage, generateVariations, calculateLeadScore, generateCampaignStrategy, type AIContext } from "@/lib/ai";
+import { generateMessage, generateVariations, calculateLeadScore, generateCampaignStrategy, OBJECTION_HANDLERS, type AIContext } from "@/lib/ai";
 
 // POST /api/ai - AI operations
 export async function POST(request: NextRequest) {
@@ -29,6 +29,27 @@ export async function POST(request: NextRequest) {
       case "generate_strategy": {
         const result = generateCampaignStrategy(body.params);
         return NextResponse.json(result);
+      }
+
+      case "handle_objection": {
+        const { message, contactName, language } = body;
+        const lang = language || "es";
+        const lower = message.toLowerCase();
+        
+        // Find matching objection type
+        for (const [type, handler] of Object.entries(OBJECTION_HANDLERS)) {
+          if (handler.trigger.some(t => lower.includes(t))) {
+            const responses = handler.responses[lang] || handler.responses.es;
+            const response = responses[Math.floor(Math.random() * responses.length)]
+              .replace(/\{firstName\}/g, contactName || "")
+              .replace(/\{product\}/g, body.product || "nuestra solución")
+              .replace(/\{price\}/g, body.price || "")
+              .replace(/\{benefit\}/g, body.benefit || "mejorar resultados")
+              .replace(/\{timeline\}/g, body.timeline || "poco tiempo");
+            return NextResponse.json({ type, response, confidence: 85 });
+          }
+        }
+        return NextResponse.json({ type: "unknown", response: "No se detectó objeción específica", confidence: 30 });
       }
 
       default:

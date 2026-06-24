@@ -14,6 +14,10 @@ const pageTitles: Record<string, string> = {
   "/settings": "Ajustes",
   "/queue": "Cola",
   "/menu": "Menú",
+  "/pipeline": "Pipeline",
+  "/revenue": "Ingresos",
+  "/import": "Importar",
+  "/onboarding": "Configuración Inicial",
 };
 
 export function TopBar() {
