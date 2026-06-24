@@ -21,6 +21,9 @@ const navigation = [
   { name: "Analytics", href: "/analytics", icon: "📈" },
   { name: "Configuración", href: "/settings", icon: "⚙️" },
   { name: "Warm-up", href: "/warmup", icon: "🛡️" },
+  { name: "Contenido", href: "/content", icon: "📣" },
+  { name: "Espía", href: "/spy", icon: "🕵️" },
+  { name: "Referidos", href: "/referrals", icon: "🎁" },
 ];
 
 export function Sidebar() {
