@@ -20,6 +20,7 @@ const navigation = [
   { name: "Cola de Tareas", href: "/queue", icon: "⏳" },
   { name: "Analytics", href: "/analytics", icon: "📈" },
   { name: "Configuración", href: "/settings", icon: "⚙️" },
+  { name: "Warm-up", href: "/warmup", icon: "🛡️" },
 ];
 
 export function Sidebar() {

@@ -20,6 +20,7 @@ const pageTitles: Record<string, string> = {
   "/onboarding": "Configuración Inicial",
   "/calendar": "Agenda",
   "/automations": "Automatizaciones",
+  "/warmup": "Warm-up",
 };
 
 export function TopBar() {
