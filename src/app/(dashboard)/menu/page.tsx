@@ -3,9 +3,12 @@
 import Link from "next/link";
 
 const menuItems = [
+  { name: "Pipeline", href: "/pipeline", icon: "🎯", description: "Kanban de ventas" },
   { name: "Campañas", href: "/campaigns", icon: "🚀", description: "Secuencias automatizadas" },
+  { name: "Ingresos", href: "/revenue", icon: "💰", description: "Tracking de ventas" },
   { name: "Templates", href: "/templates", icon: "📝", description: "Mensajes personalizables" },
   { name: "Productos", href: "/products", icon: "🛍️", description: "Tu catálogo de servicios" },
+  { name: "Importar", href: "/import", icon: "📥", description: "CSV y scraping" },
   { name: "Analytics", href: "/analytics", icon: "📈", description: "Métricas y rendimiento" },
   { name: "Cola de Tareas", href: "/queue", icon: "⏳", description: "Acciones programadas" },
   { name: "Configuración", href: "/settings", icon: "⚙️", description: "Redes y preferencias" },

@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/ui/sidebar";
 import { MobileNav } from "@/components/ui/mobile-nav";
 import { TopBar } from "@/components/ui/top-bar";
+import { QuickActionButton } from "@/components/ui/quick-action";
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,9 @@ export default function DashboardLayout({
           <div className="p-4 md:p-8 max-w-7xl mx-auto">{children}</div>
         </div>
       </main>
+
+      {/* Quick Action FAB */}
+      <QuickActionButton />
 
       {/* Mobile bottom navigation */}
       <MobileNav />
