@@ -1,18 +1,17 @@
 import { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
-/**
- * Fail closed: never accept user IDs supplied in request headers or bodies.
- * Configure AUTH_JWT_SECRET and issue signed session cookies after login.
- */
+export function getSessionSecret(): string | null {
+  const secret = process.env.AUTH_JWT_SECRET;
+  return secret && secret.length >= 32 ? secret : null;
+}
+
 export async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get("prospector_session")?.value;
-  const secret = process.env.AUTH_JWT_SECRET;
-  if (!token || !secret || secret.length < 32) return null;
+  const secret = getSessionSecret();
+  if (!token || !secret) return null;
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
-      algorithms: ["HS256"],
-    });
+    const payload = jwt.verify(token, secret, { algorithms: ["HS256"] }) as JwtPayload;
     return typeof payload.sub === "string" && payload.sub.length > 0 ? payload.sub : null;
   } catch {
     return null;
