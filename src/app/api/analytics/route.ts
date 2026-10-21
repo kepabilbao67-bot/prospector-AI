@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
-import { DEMO_ANALYTICS } from "@/lib/demo-data";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedUserId } from "@/lib/require-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const prisma = (await import("@/lib/prisma")).default;
     const events = await prisma.analyticsEvent.findMany({
-      where: { userId: "default-user" },
+      where: { userId },
       orderBy: { createdAt: "asc" },
     });
 
-    if (events.length === 0) return NextResponse.json(DEMO_ANALYTICS);
 
     const stats = {
       messagesSent: events.filter((e) => e.eventType === "message_sent").length,
@@ -24,6 +25,6 @@ export async function GET() {
 
     return NextResponse.json({ stats, replyRate, conversionRate, chartData: [], networkStats: {}, totalEvents: events.length });
   } catch {
-    return NextResponse.json(DEMO_ANALYTICS);
+    return NextResponse.json({ error: "Analytics unavailable" }, { status: 503 });
   }
 }
