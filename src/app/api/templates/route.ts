@@ -1,37 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_TEMPLATES } from "@/lib/demo-data";
+import prisma from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/require-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const prisma = (await import("@/lib/prisma")).default;
-    const templates = await prisma.template.findMany({
-      where: { userId: "default-user" },
-      orderBy: { createdAt: "desc" },
-    });
-    if (templates.length > 0) return NextResponse.json({ templates });
-  } catch { /* DB not available */ }
-  return NextResponse.json({ templates: DEMO_TEMPLATES });
+    const templates = await prisma.template.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+    return NextResponse.json({ templates });
+  } catch {
+    return NextResponse.json({ error: "Templates unavailable" }, { status: 503 });
+  }
 }
 
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
-    const template = {
-      id: `t${Date.now()}`,
-      userId: "default-user",
-      name: body.name,
-      network: body.network,
-      type: body.type,
-      subject: body.subject || null,
-      content: body.content,
-      variables: JSON.stringify([]),
-      usageCount: 0,
-      replyRate: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    if (typeof body.name !== "string" || !body.name.trim() ||
+        typeof body.content !== "string" || !body.content.trim() ||
+        typeof body.network !== "string" || typeof body.type !== "string") {
+      return NextResponse.json({ error: "Invalid template" }, { status: 400 });
+    }
+    const template = await prisma.template.create({
+      data: { userId, name: body.name, network: body.network, type: body.type,
+        subject: body.subject || null, content: body.content, variables: "[]" },
+    });
     return NextResponse.json(template, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ error: "Template was not saved" }, { status: 503 });
   }
 }
