@@ -1,9 +1,10 @@
+import { getAuthenticatedUserId } from "@/lib/require-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-async function getContacts() {
+async function getContacts(userId: string) {
   const prisma = (await import("@/lib/prisma")).default;
   return prisma.contact.findMany({
-    where: { userId: "default-user" },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -11,13 +12,15 @@ async function getContacts() {
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const network = searchParams.get("network");
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contacts: any[] = await getContacts();
+    let contacts: any[] = await getContacts(userId);
 
     if (network && network !== "all") contacts = contacts.filter((c: any) => c.network === network);
     if (status && status !== "all") contacts = contacts.filter((c: any) => c.status === status);
@@ -39,10 +42,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
     const newContact = {
       id: `c${Date.now()}`,
-      userId: "default-user",
+      userId,
       firstName: body.firstName || "Unknown",
       lastName: body.lastName || null,
       email: body.email || null,
