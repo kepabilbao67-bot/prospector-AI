@@ -1,15 +1,18 @@
+import { getAuthenticatedUserId } from "@/lib/require-auth";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 // GET /api/queue - List queued tasks
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "pending";
 
     const tasks = await prisma.taskQueue.findMany({
       where: {
-        userId: "default-user",
+        userId,
         status: status === "all" ? undefined : status,
       },
       orderBy: [{ priority: "desc" }, { scheduledAt: "asc" }],
@@ -18,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const counts = await prisma.taskQueue.groupBy({
       by: ["status"],
-      where: { userId: "default-user" },
+      where: { userId },
       _count: { id: true },
     });
 
@@ -35,6 +38,8 @@ export async function GET(request: NextRequest) {
 // POST /api/queue - Add task to queue
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await request.json();
 
     // Add randomized delay for human-like behavior
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     const task = await prisma.taskQueue.create({
       data: {
-        userId: "default-user",
+        userId,
         type: body.type,
         network: body.network,
         payload: JSON.stringify(body.payload || {}),
