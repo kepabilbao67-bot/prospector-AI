@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CONTACTS } from "@/lib/demo-data";
-
-let inMemoryContacts = [...DEMO_CONTACTS];
 
 async function getContacts() {
-  try {
-    const prisma = (await import("@/lib/prisma")).default;
-    const contacts = await prisma.contact.findMany({
-      where: { userId: "default-user" },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    if (contacts.length > 0) return contacts;
-  } catch { /* DB not available */ }
-  return inMemoryContacts;
+  const prisma = (await import("@/lib/prisma")).default;
+  return prisma.contact.findMany({
+    where: { userId: "default-user" },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -40,7 +33,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ contacts, total: contacts.length, page: 1, totalPages: 1 });
   } catch (error) {
     console.error("Error:", error);
-    return NextResponse.json({ contacts: DEMO_CONTACTS, total: DEMO_CONTACTS.length, page: 1, totalPages: 1 });
+    return NextResponse.json({ error: "Contacts temporarily unavailable" }, { status: 503 });
   }
 }
 
@@ -64,16 +57,11 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    try {
-      const prisma = (await import("@/lib/prisma")).default;
-      const contact = await prisma.contact.create({ data: newContact as never });
-      return NextResponse.json(contact, { status: 201 });
-    } catch {
-      inMemoryContacts.unshift(newContact as typeof inMemoryContacts[0]);
-      return NextResponse.json(newContact, { status: 201 });
-    }
+    const prisma = (await import("@/lib/prisma")).default;
+    const contact = await prisma.contact.create({ data: newContact as never });
+    return NextResponse.json(contact, { status: 201 });
   } catch (error) {
     console.error("Error:", error);
-    return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
+    return NextResponse.json({ error: "Contact was not saved" }, { status: 503 });
   }
 }
