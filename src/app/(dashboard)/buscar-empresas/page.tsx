@@ -26,8 +26,9 @@ export default function BuscarEmpresasPage() {
       window.sessionStorage.removeItem("prospector:selected-contact:v1");
       const selected: unknown = JSON.parse(raw);
       if (!selected || typeof selected !== "object") return;
-      const c = selected as { phone?: unknown; company?: unknown; name?: unknown };
+      const c = selected as { phone?: unknown; email?: unknown; company?: unknown; name?: unknown };
       if (typeof c.phone === "string") setTelefono(c.phone.slice(0, 30));
+      if (typeof c.email === "string") setCorreo(c.email.slice(0, 254));
       const recipient = typeof c.name === "string" && c.name.trim() ? c.name : c.company;
       if (typeof recipient === "string" && recipient.trim()) {
         setMensaje(current => current.replace(/^Hola,/, "Hola " + recipient.slice(0, 120) + ","));
