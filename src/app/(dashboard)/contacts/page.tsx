@@ -109,7 +109,7 @@ export default function ContactsPage() {
     link.href = url;
     link.download = "prospector-contactos-" + new Date().toISOString().slice(0, 10) + ".json";
     link.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice("Copia de contactos preparada para descargar. Guárdala en un lugar privado.");
   }
 
