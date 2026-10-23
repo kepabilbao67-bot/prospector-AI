@@ -17,6 +17,19 @@ export default function BuscarEmpresasPage() {
     } catch { /* Browser may block session storage. */ }
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const phone = params.get("phone");
+    const company = params.get("company");
+    const name = params.get("name");
+    if (phone) setTelefono(phone.slice(0, 30));
+    if (company || name) {
+      const recipient = (name || company || "").slice(0, 120);
+      setMensaje(current => current.replace(/^Hola,/, "Hola " + recipient + ","));
+      setEstado("Contacto recibido desde el CRM local. Comprueba los datos antes de enviar.");
+    }
+  }, []);
+
   function guardarBorrador() {
     try {
       window.sessionStorage.setItem("prospector:manual-draft:v1", mensaje);
