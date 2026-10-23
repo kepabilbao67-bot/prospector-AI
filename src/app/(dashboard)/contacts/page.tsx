@@ -93,8 +93,8 @@ export default function ContactsPage() {
     };
     const duplicate = contacts.find(c => c.id !== editingId &&
       ((data.email && c.email.toLowerCase() === data.email.toLowerCase()) ||
-       (data.phone && c.phone.replace(/\D/g, "") === data.phone.replace(/\D/g, "") &&
-        c.company.toLowerCase() === data.company.toLowerCase())));
+       (data.phone && data.company && c.phone.replace(/\D/g, "") === data.phone.replace(/\D/g, "") &&
+        c.company.trim().toLowerCase() === data.company.trim().toLowerCase())));
     if (duplicate) {
       setNotice("Ya existe un contacto con el mismo correo o teléfono y empresa. Revisa el registro antes de duplicarlo.");
       return;
