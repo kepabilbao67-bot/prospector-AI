@@ -48,6 +48,9 @@ export default function BuscarEmpresasPage() {
     { titulo: "Google Maps", url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(busqueda) },
     { titulo: "LinkedIn (búsqueda de empresas)", url: "https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(busqueda) },
     { titulo: "Google (webs oficiales)", url: "https://www.google.com/search?q=" + encodeURIComponent(busqueda + " empresa contacto") },
+    { titulo: "Facebook (buscar empresas)", url: "https://www.facebook.com/search/pages/?q=" + encodeURIComponent(busqueda) },
+    { titulo: "Instagram (buscar perfiles)", url: "https://www.google.com/search?q=" + encodeURIComponent("site:instagram.com " + busqueda) },
+    { titulo: "X (buscar empresas)", url: "https://x.com/search?q=" + encodeURIComponent(busqueda) + "&f=user" },
   ];
 
   function abrirWhatsApp() {
