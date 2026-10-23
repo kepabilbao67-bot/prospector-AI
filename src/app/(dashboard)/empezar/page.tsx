@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const steps = [
   { title: "0. Buscar cinco empresas reales", text: "Empieza cada día buscando por sector y zona. Comprueba en las fuentes oficiales el nombre, la actividad y los datos de contacto antes de escribir.", href: "/buscar-empresas", action: "Buscar empresas" },
-  { title: "1. CRM — pendiente de desbloqueo seguro", text: "El registro de contactos está temporalmente bloqueado en esta rama hasta verificar autenticación y aislamiento. No introduzcas datos de clientes todavía.", href: "/contacts", action: "Ver CRM" },
+  { title: "1. Registrar el contacto en el CRM local", text: "La pantalla Contactos permite guardar registros de prueba en el almacenamiento local del navegador, añadir seguimientos y exportar una copia. No guardes datos personales reales todavía: falta autenticación y sincronización segura.", href: "/contacts", action: "Ver CRM" },
   { title: "2. Preparar el mensaje y WhatsApp", text: "Desde Buscar empresas redacta un mensaje, guárdalo en esta pestaña y ábrelo en WhatsApp solo después de verificar el número. La acción nunca envía sola.", href: "/buscar-empresas", action: "Abrir preparador" },
-  { title: "3. Organizar la oportunidad", text: "Clasifica los contactos y revisa el Pipeline. Mantén las campañas en borrador hasta comprobar destinatarios y consentimiento.", href: "/pipeline", action: "Ver oportunidades" },
+  { title: "3. Revisar seguimientos cada día", text: "Consulta los seguimientos de hoy y los vencidos desde Contactos; actualiza el estado y la fecha después de cada gestión. Las automatizaciones externas todavía no están conectadas.", href: "/contacts", action: "Ver seguimientos" },
 ];
 
 export default function EmpezarPage() {
