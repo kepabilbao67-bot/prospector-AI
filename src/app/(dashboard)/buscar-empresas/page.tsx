@@ -18,15 +18,21 @@ export default function BuscarEmpresasPage() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const phone = params.get("phone");
-    const company = params.get("company");
-    const name = params.get("name");
-    if (phone) setTelefono(phone.slice(0, 30));
-    if (company || name) {
-      const recipient = (name || company || "").slice(0, 120);
-      setMensaje(current => current.replace(/^Hola,/, "Hola " + recipient + ","));
-      setEstado("Contacto recibido desde el CRM local. Comprueba los datos antes de enviar.");
+    try {
+      const raw = window.sessionStorage.getItem("prospector:selected-contact:v1");
+      if (!raw) return;
+      window.sessionStorage.removeItem("prospector:selected-contact:v1");
+      const selected: unknown = JSON.parse(raw);
+      if (!selected || typeof selected !== "object") return;
+      const c = selected as { phone?: unknown; company?: unknown; name?: unknown };
+      if (typeof c.phone === "string") setTelefono(c.phone.slice(0, 30));
+      const recipient = typeof c.name === "string" && c.name.trim() ? c.name : c.company;
+      if (typeof recipient === "string" && recipient.trim()) {
+        setMensaje(current => current.replace(/^Hola,/, "Hola " + recipient.slice(0, 120) + ","));
+      }
+      setEstado("Contacto seleccionado desde el CRM. Comprueba los datos antes de enviar.");
+    } catch {
+      setEstado("No se pudo recuperar el contacto. Introduce los datos manualmente.");
     }
   }, []);
 
