@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { name: "Dashboard", href: "/", icon: "grid" },
   { name: "Empezar aquí", href: "/empezar", icon: "file-text" },
+  { name: "Mi jornada", href: "/jornada", icon: "calendar" },
   { name: "Buscar empresas", href: "/buscar-empresas", icon: "users" },
   { name: "Wizard IA", href: "/wizard", icon: "zap" },
   { name: "Inbox", href: "/inbox", icon: "mail" },
