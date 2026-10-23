@@ -5,6 +5,8 @@ import Link from "next/link";
 
 export default function BuscarEmpresasPage() {
   const [telefono, setTelefono] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [asunto, setAsunto] = useState("Propuesta para mejorar vuestra gestión");
   const [sector, setSector] = useState("administradores de fincas");
   const [zona, setZona] = useState("Bilbao, Bizkaia");
   const [mensaje, setMensaje] = useState("Hola, he visto vuestra empresa y me gustaría presentaros una solución para digitalizar y simplificar la gestión de clientes y documentos. ¿Os vendría bien una breve conversación?");
@@ -63,6 +65,17 @@ export default function BuscarEmpresasPage() {
     setEstado("WhatsApp abierto con el borrador: revisa el destinatario y pulsa Enviar allí si procede.");
   }
 
+  function prepararCorreo() {
+    const email = correo.trim();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !mensaje.trim()) {
+      setEstado("Introduce un correo electrónico válido y un mensaje antes de preparar el email.");
+      return;
+    }
+    const url = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(mensaje);
+    window.location.href = url;
+    setEstado("Se abrió tu aplicación de correo con un borrador; comprueba el destinatario antes de enviarlo.");
+  }
+
   function escuchar() {
     if (!("speechSynthesis" in window)) { setEstado("Este navegador no admite lectura de voz."); return; }
     window.speechSynthesis.cancel();
@@ -101,9 +114,23 @@ export default function BuscarEmpresasPage() {
         <label className="block text-sm font-medium" htmlFor="telefono-prospector">Teléfono WhatsApp (prefijo internacional, sin +)</label>
         <input id="telefono-prospector" type="tel" inputMode="tel" autoComplete="off" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="Ej. 346XXXXXXXX" className="w-full rounded-lg border p-3 text-sm" />
         <p className="text-xs text-gray-500">Verifica que este número pertenece al contacto antes de abrir el chat.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-medium">Correo para la propuesta
+            <input type="email" value={correo} onChange={e => setCorreo(e.target.value)} maxLength={254} className="mt-2 w-full rounded-lg border p-3 font-normal" placeholder="responsable@empresa.com" />
+          </label>
+          <label className="text-sm font-medium">Asunto del correo
+            <input value={asunto} onChange={e => setAsunto(e.target.value)} maxLength={120} className="mt-2 w-full rounded-lg border p-3 font-normal" />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="rounded-lg border px-3 py-2 text-xs" onClick={() => setMensaje("Hola, estoy trabajando en soluciones que simplifican los albaranes, la documentación y el seguimiento comercial. ¿Os vendría bien una demostración breve esta semana?")}>Plantilla inicial</button>
+          <button type="button" className="rounded-lg border px-3 py-2 text-xs" onClick={() => setMensaje("Hola, os escribí hace unos días para presentar una solución de digitalización. ¿Podemos reservar diez minutos para valorar si encaja en vuestro trabajo? Si no os interesa, no volveré a insistir.")}>Plantilla seguimiento</button>
+          <button type="button" className="rounded-lg border px-3 py-2 text-xs" onClick={() => setMensaje("Hola, estamos desarrollando herramientas para administrar fincas y gestionar incidencias, albaranes y documentos desde un mismo lugar. ¿Con quién podría hablar para enseñarle una demostración?")}>Plantilla fincas</button>
+        </div>
         <label className="block text-sm text-gray-600" htmlFor="borrador-prospector">Edita el texto antes de contactar a alguien</label>
         <textarea id="borrador-prospector" rows={5} value={mensaje} onChange={e => setMensaje(e.target.value)} className="w-full rounded-lg border p-3 text-sm" />
         <div className="flex flex-wrap gap-2">
+          <button onClick={prepararCorreo} className="rounded-lg border px-4 py-2 text-sm">Preparar correo</button>
           <button onClick={abrirWhatsApp} className="rounded-lg bg-green-800 px-4 py-2 text-sm text-white">Abrir borrador en WhatsApp</button>
           <button onClick={guardarBorrador} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">Guardar borrador local</button>
           <button onClick={copiar} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">Copiar borrador</button>
