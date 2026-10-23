@@ -62,7 +62,8 @@ export default function ContactsPage() {
     )).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [contacts, query]);
 
-  const today = new Date().toLocaleDateString("en-CA");
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
   const due = contacts.filter(c => c.nextFollowUp && c.nextFollowUp <= today && c.status !== "cliente")
     .sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
 
