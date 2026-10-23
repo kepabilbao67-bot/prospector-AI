@@ -1,37 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { DEMO_TEMPLATES } from "@/lib/demo-data";
+import { NextResponse } from "next/server";
 
-export async function GET() {
-  try {
-    const prisma = (await import("@/lib/prisma")).default;
-    const templates = await prisma.template.findMany({
-      where: { userId: "default-user" },
-      orderBy: { createdAt: "desc" },
-    });
-    if (templates.length > 0) return NextResponse.json({ templates });
-  } catch { /* DB not available */ }
-  return NextResponse.json({ templates: DEMO_TEMPLATES });
+// Templates are customer-specific. The old shared default-user implementation
+// could expose demo/shared data and acknowledge writes without persisting them.
+// Restore endpoints only alongside verified authenticated user scoping.
+function unavailable() {
+  return NextResponse.json(
+    { error: "Plantillas no disponibles hasta verificar sesión y aislamiento por usuario." },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const template = {
-      id: `t${Date.now()}`,
-      userId: "default-user",
-      name: body.name,
-      network: body.network,
-      type: body.type,
-      subject: body.subject || null,
-      content: body.content,
-      variables: JSON.stringify([]),
-      usageCount: 0,
-      replyRate: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    return NextResponse.json(template, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
-}
+export async function GET() { return unavailable(); }
+export async function POST() { return unavailable(); }
