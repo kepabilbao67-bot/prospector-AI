@@ -67,7 +67,7 @@ export default function BuscarEmpresasPage() {
 
   function prepararCorreo() {
     const email = correo.trim();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || !mensaje.trim()) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !mensaje.trim()) {
       setEstado("Introduce un correo electrónico válido y un mensaje antes de preparar el email.");
       return;
     }
