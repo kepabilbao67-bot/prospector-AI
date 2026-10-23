@@ -113,14 +113,14 @@ export default function DashboardPage() {
           Automatiza tu prospección en todas las redes sociales.
         </p>
         <button
-          onClick={seedData}
-          disabled={seeding}
+          onClick={() => window.location.assign("/empezar")}
+          disabled={false}
           className="w-full px-6 py-3.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
         >
-          {seeding ? "Configurando..." : "Inicializar plataforma"}
+          Ir a la guía de inicio
         </button>
         <p className="text-xs text-gray-400 text-center">
-          Esto cargará datos de ejemplo para que explores la herramienta.
+          La carga de datos de demostración está desactivada. Empieza con la guía y el CRM local de pruebas.
         </p>
       </div>
     );
