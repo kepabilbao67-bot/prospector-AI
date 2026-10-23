@@ -91,6 +91,14 @@ export default function ContactsPage() {
       email: form.email.trim(), sector: form.sector.trim(), status: form.status,
       nextFollowUp: form.nextFollowUp, notes: form.notes.trim(), updatedAt: timestamp,
     };
+    const duplicate = contacts.find(c => c.id !== editingId &&
+      ((data.email && c.email.toLowerCase() === data.email.toLowerCase()) ||
+       (data.phone && c.phone.replace(/\\D/g, "") === data.phone.replace(/\\D/g, "") &&
+        c.company.toLowerCase() === data.company.toLowerCase())));
+    if (duplicate) {
+      setNotice("Ya existe un contacto con el mismo correo o teléfono y empresa. Revisa el registro antes de duplicarlo.");
+      return;
+    }
     const next = editingId
       ? contacts.map(c => c.id === editingId ? { ...c, ...data } : c)
       : [{ id: crypto.randomUUID(), ...data }, ...contacts];
