@@ -164,7 +164,9 @@ export default function ContactsPage() {
               <p className="mt-2 text-sm text-gray-700">{c.phone || "Sin teléfono"} · {c.email || "Sin email"}</p>
               {c.nextFollowUp && <p className="mt-1 text-sm">Próximo seguimiento: {c.nextFollowUp}</p>}
               {c.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600">{c.notes}</p>}
-              <div className="mt-3 flex gap-3">
+              <div className="mt-3 flex flex-wrap gap-3">
+                <a href={"/buscar-empresas?phone=" + encodeURIComponent(c.phone) + "&company=" + encodeURIComponent(c.company) + "&name=" + encodeURIComponent(c.name)} className="text-sm font-medium text-green-800">Preparar WhatsApp y voz</a>
+                <a href={"https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(c.company || c.name)} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-700">Buscar en LinkedIn</a>
                 <button type="button" className="text-sm font-medium text-blue-700" onClick={() => edit(c)}>Editar</button>
                 <button type="button" className="text-sm font-medium text-red-700" onClick={() => remove(c)}>Eliminar</button>
               </div>
