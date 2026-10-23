@@ -100,6 +100,19 @@ export default function ContactsPage() {
     }
   }
 
+  function exportBackup() {
+    if (!ready || !contacts.length) { setNotice("No hay contactos locales que exportar."); return; }
+    const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), contacts }, null, 2)],
+      { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "prospector-contactos-" + new Date().toISOString().slice(0, 10) + ".json";
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice("Copia de contactos preparada para descargar. Guárdala en un lugar privado.");
+  }
+
   function edit(c: Contact) {
     setEditingId(c.id);
     setForm({ name: c.name, company: c.company, phone: c.phone, email: c.email,
@@ -167,7 +180,10 @@ export default function ContactsPage() {
       </form>
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-semibold">Mis registros: {contacts.length}</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="font-semibold">Mis registros: {contacts.length}</h2>
+            <button type="button" disabled={!ready || !contacts.length} onClick={exportBackup} className="rounded-lg border px-3 py-2 text-xs disabled:opacity-50">Exportar copia JSON</button>
+          </div>
           <input aria-label="Buscar contactos" placeholder="Buscar por empresa, sector, nombre…" value={query} onChange={e => setQuery(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm sm:w-80" />
         </div>
         {!ready ? <p>Cargando contactos locales…</p> : results.length === 0 ? <p className="rounded-xl border bg-white p-5 text-sm text-gray-600">No hay contactos. Utiliza el formulario para añadir el primero.</p> : (
