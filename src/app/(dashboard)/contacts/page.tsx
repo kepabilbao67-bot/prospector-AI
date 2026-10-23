@@ -62,6 +62,10 @@ export default function ContactsPage() {
     )).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [contacts, query]);
 
+  const today = new Date().toLocaleDateString("en-CA");
+  const due = contacts.filter(c => c.nextFollowUp && c.nextFollowUp <= today && c.status !== "cliente")
+    .sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
+
   function persist(next: Contact[]): boolean {
     try {
       window.localStorage.setItem(STORE, JSON.stringify(next));
@@ -120,6 +124,17 @@ export default function ContactsPage() {
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
         <strong>Versión local de pruebas.</strong> Los contactos se guardan únicamente en este navegador y perfil, sin sincronización ni copia de seguridad automática. No uses todavía datos personales sensibles ni este CRM en dispositivos compartidos. La conexión multiusuario y segura al servidor sigue pendiente.
       </div>
+      <section className="rounded-xl border bg-white p-5" aria-label="Seguimientos pendientes">
+        <h2 className="font-semibold">Seguimientos de hoy y atrasados: {due.length}</h2>
+        {due.length === 0 ? <p className="mt-2 text-sm text-gray-600">No hay seguimientos vencidos registrados.</p> :
+          <ul className="mt-3 space-y-2">
+            {due.map(c => <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm">
+              <span>{c.company || c.name} · {c.nextFollowUp} · {c.status}</span>
+              <button type="button" className="text-blue-700 underline" onClick={() => edit(c)}>Abrir seguimiento</button>
+            </li>)}
+          </ul>}
+        <p className="mt-2 text-xs text-gray-500">Este panel se calcula con los contactos de este navegador. No envía recordatorios ni mensajes.</p>
+      </section>
       <form onSubmit={save} className="space-y-4 rounded-xl border bg-white p-5">
         <h2 className="text-lg font-semibold">{editingId ? "Editar contacto" : "Añadir contacto"}</h2>
         <div className="grid gap-3 sm:grid-cols-2">
