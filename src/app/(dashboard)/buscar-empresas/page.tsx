@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 export default function BuscarEmpresasPage() {
+  const [telefono, setTelefono] = useState("");
   const [sector, setSector] = useState("administradores de fincas");
   const [zona, setZona] = useState("Bilbao, Bizkaia");
   const [mensaje, setMensaje] = useState("Hola, he visto vuestra empresa y me gustaría presentaros una solución para digitalizar y simplificar la gestión de clientes y documentos. ¿Os vendría bien una breve conversación?");
@@ -29,6 +30,16 @@ export default function BuscarEmpresasPage() {
     { titulo: "LinkedIn (búsqueda de empresas)", url: "https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(busqueda) },
     { titulo: "Google (webs oficiales)", url: "https://www.google.com/search?q=" + encodeURIComponent(busqueda + " empresa contacto") },
   ];
+
+  function abrirWhatsApp() {
+    const numero = telefono.replace(/[^0-9]/g, "");
+    if (numero.length < 9 || numero.length > 15 || !mensaje.trim()) {
+      setEstado("Introduce un teléfono con prefijo internacional (por ejemplo, 34...) y un borrador.");
+      return;
+    }
+    window.open("https://wa.me/" + numero + "?text=" + encodeURIComponent(mensaje), "_blank", "noopener,noreferrer");
+    setEstado("WhatsApp abierto con el borrador: revisa el destinatario y pulsa Enviar allí si procede.");
+  }
 
   function escuchar() {
     if (!("speechSynthesis" in window)) { setEstado("Este navegador no admite lectura de voz."); return; }
@@ -65,9 +76,13 @@ export default function BuscarEmpresasPage() {
       </div>
       <div className="space-y-3 rounded-xl border bg-white p-5">
         <h2 className="font-semibold">Preparar mensaje (borrador local)</h2>
+        <label className="block text-sm font-medium" htmlFor="telefono-prospector">Teléfono WhatsApp (prefijo internacional, sin +)</label>
+        <input id="telefono-prospector" type="tel" inputMode="tel" autoComplete="off" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="Ej. 346XXXXXXXX" className="w-full rounded-lg border p-3 text-sm" />
+        <p className="text-xs text-gray-500">Verifica que este número pertenece al contacto antes de abrir el chat.</p>
         <label className="block text-sm text-gray-600" htmlFor="borrador-prospector">Edita el texto antes de contactar a alguien</label>
         <textarea id="borrador-prospector" rows={5} value={mensaje} onChange={e => setMensaje(e.target.value)} className="w-full rounded-lg border p-3 text-sm" />
         <div className="flex flex-wrap gap-2">
+          <button onClick={abrirWhatsApp} className="rounded-lg bg-green-800 px-4 py-2 text-sm text-white">Abrir borrador en WhatsApp</button>
           <button onClick={guardarBorrador} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">Guardar borrador local</button>
           <button onClick={copiar} className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white">Copiar borrador</button>
           <button onClick={escuchar} className="rounded-lg border px-4 py-2 text-sm">Escuchar</button>
@@ -75,7 +90,7 @@ export default function BuscarEmpresasPage() {
           <Link href="/contacts" className="rounded-lg border px-4 py-2 text-sm">Abrir CRM</Link>
         </div>
         <p role="status" className="text-xs text-gray-600">{estado}</p>
-        <p className="text-xs text-gray-500">El botón Guardar almacena el borrador únicamente en la sesión de esta pestaña, no en la base de datos ni en el CRM. Evita incluir datos sensibles. Ninguna acción envía mensajes. La lectura utiliza el motor del navegador, no Gemini ni KEPA VOZ 360.</p>
+        <p className="text-xs text-gray-500">El botón Guardar almacena el borrador únicamente en la sesión de esta pestaña, no en la base de datos ni en el CRM. Evita incluir datos sensibles. Ninguna acción envía mensajes. WhatsApp se abre mediante enlace wa.me; no hay cuenta Business ni API conectadas. La lectura utiliza el motor del navegador, no Gemini ni KEPA VOZ 360.</p>
       </div>
     </section>
   );
