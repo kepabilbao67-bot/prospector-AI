@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "grid" },
+  { name: "Empezar aquí", href: "/empezar", icon: "file-text" },
   { name: "Wizard IA", href: "/wizard", icon: "zap" },
   { name: "Inbox", href: "/inbox", icon: "mail" },
   { name: "Agenda", href: "/calendar", icon: "calendar" },
