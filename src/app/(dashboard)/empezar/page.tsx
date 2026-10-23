@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 const steps = [
-  { title: "1. Registrar un cliente", text: "Abre Contactos y añade una empresa real con los datos que hayas verificado. No cargues datos de demostración en una base con clientes reales.", href: "/contacts", action: "Abrir CRM" },
-  { title: "2. Preparar el mensaje", text: "Usa Templates para redactar una propuesta personalizada. Revísala antes de compartirla. No se envía automáticamente desde esta guía.", href: "/templates", action: "Preparar texto" },
+  { title: "0. Buscar cinco empresas reales", text: "Empieza cada día buscando por sector y zona. Comprueba en las fuentes oficiales el nombre, la actividad y los datos de contacto antes de escribir.", href: "/buscar-empresas", action: "Buscar empresas" },
+  { title: "1. CRM — pendiente de desbloqueo seguro", text: "El registro de contactos está temporalmente bloqueado en esta rama hasta verificar autenticación y aislamiento. No introduzcas datos de clientes todavía.", href: "/contacts", action: "Ver CRM" },
+  { title: "2. Preparar el mensaje y WhatsApp", text: "Desde Buscar empresas redacta un mensaje, guárdalo en esta pestaña y ábrelo en WhatsApp solo después de verificar el número. La acción nunca envía sola.", href: "/buscar-empresas", action: "Abrir preparador" },
   { title: "3. Organizar la oportunidad", text: "Clasifica los contactos y revisa el Pipeline. Mantén las campañas en borrador hasta comprobar destinatarios y consentimiento.", href: "/pipeline", action: "Ver oportunidades" },
 ];
 
@@ -25,7 +26,7 @@ export default function EmpezarPage() {
       </div>
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
         <h2 className="font-semibold">Integraciones: estado real</h2>
-        <p className="mt-2">Google Maps y LinkedIn: búsqueda externa, no importación automática verificada. WhatsApp Business: abrir un borrador no equivale a conectar su API. Gemini Live, KEPA VOZ 360 e IA360: conexión pendiente de verificar. Esta página no inicia campañas ni envía mensajes.</p>
+        <p className="mt-2">Google Maps y LinkedIn: búsquedas externas, no importación automática verificada. WhatsApp: se prepara un chat mediante enlace, no hay cuenta Business API conectada. Gemini Live, KEPA VOZ 360 e IA360: conexión pendiente de verificar. Esta página no inicia campañas ni envía mensajes.</p>
       </div>
       <p className="text-xs text-gray-500">Antes de trabajar con datos personales, confirma que tu sesión y la base de datos están correctamente aisladas. La disponibilidad de cada módulo depende del entorno desplegado.</p>
     </section>
