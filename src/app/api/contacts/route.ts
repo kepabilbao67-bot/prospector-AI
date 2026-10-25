@@ -1,19 +1,16 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 // Safe single-operator mode: the authenticated API token does not imply a
 // multi-tenant identity. Explicitly configure the existing operator's DB user ID.
 // Never use a shared demo identity for production CRM data.
-function operatorId(): string | null {
-  const id = process.env.PROSPECTOR_OPERATOR_USER_ID;
-  return id && id !== "default-user" && /^[A-Za-z0-9_-]{3,128}$/.test(id) ? id : null;
-}
 const unavailable = () => NextResponse.json(
   { error: "Operator identity is not configured" }, { status: 503 }
 );
 
 export async function GET(request: NextRequest) {
-  const userId = operatorId();
+  const userId = configuredOperatorId();
   if (!userId) return unavailable();
   try {
     const { searchParams } = new URL(request.url);
@@ -41,7 +38,7 @@ export async function GET(request: NextRequest) {
   }
 }
 export async function POST(request: NextRequest) {
-  const userId = operatorId();
+  const userId = configuredOperatorId();
   if (!userId) return unavailable();
   try {
     const body = await request.json();
