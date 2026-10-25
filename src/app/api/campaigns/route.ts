@@ -1,11 +1,14 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 // No demo fallback. Authentication and tenant scoping are required before release.
 export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const campaigns = await prisma.campaign.findMany({
-      where: { userId: "default-user" },
+      where: { userId: userId },
       include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
       orderBy: { createdAt: "desc" },
     });
@@ -17,6 +20,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const body = await request.json();
     if (typeof body.name !== "string" || !body.name.trim()) {
@@ -24,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
     const created = await prisma.campaign.create({
       data: {
-        userId: "default-user",
+        userId: userId,
         name: body.name.trim(),
         description: body.description || null,
         network: body.network || "multi",
