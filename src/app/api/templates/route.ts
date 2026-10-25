@@ -1,10 +1,13 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const templates = await prisma.template.findMany({
-      where: { userId: "default-user" },
+      where: { userId: userId },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ templates });
@@ -15,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const body = await request.json();
     if (typeof body.name !== "string" || !body.name.trim() || typeof body.content !== "string" || !body.content.trim() || typeof body.network !== "string" || !body.network.trim() || typeof body.type !== "string" || !body.type.trim()) {
@@ -22,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
     const template = await prisma.template.create({
       data: {
-        userId: "default-user",
+        userId: userId,
         name: body.name.trim(),
         network: body.network.trim(),
         type: body.type.trim(),
