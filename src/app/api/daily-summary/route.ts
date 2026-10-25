@@ -1,16 +1,19 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { generateDailyInsights } from "@/lib/ai-templates";
 
 // GET /api/daily-summary - Get daily AI-powered summary
 export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     // Get today's analytics
     const events = await prisma.analyticsEvent.findMany({
-      where: { userId: "default-user", createdAt: { gte: today } },
+      where: { userId: userId, createdAt: { gte: today } },
     });
 
     const messagesSent = events.filter(e => e.eventType === "message_sent").length;
@@ -19,12 +22,12 @@ export async function GET() {
 
     // Get active campaigns count
     const activeCampaigns = await prisma.campaign.count({
-      where: { userId: "default-user", status: "active" },
+      where: { userId: userId, status: "active" },
     });
 
     // Get pending queue
     const queuePending = await prisma.taskQueue.count({
-      where: { userId: "default-user", status: "pending" },
+      where: { userId: userId, status: "pending" },
     });
 
     // Get top network
@@ -43,9 +46,9 @@ export async function GET() {
     });
 
     // Get total contacts and recent additions
-    const totalContacts = await prisma.contact.count({ where: { userId: "default-user" } });
+    const totalContacts = await prisma.contact.count({ where: { userId: userId } });
     const newContactsToday = await prisma.contact.count({
-      where: { userId: "default-user", createdAt: { gte: today } },
+      where: { userId: userId, createdAt: { gte: today } },
     });
 
     return NextResponse.json({
