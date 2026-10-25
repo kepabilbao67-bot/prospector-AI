@@ -1,10 +1,13 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const events = await prisma.analyticsEvent.findMany({
-      where: { userId: "default-user" },
+      where: { userId: userId },
       orderBy: { createdAt: "asc" },
     });
     const stats = {
