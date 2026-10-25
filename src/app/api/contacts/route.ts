@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// Do not substitute demo contacts or volatile memory for the CRM database.
-// These routes still require an authentication layer before production use.
+// Safe single-operator mode: the authenticated API token does not imply a
+// multi-tenant identity. Explicitly configure the existing operator's DB user ID.
+// Never use a shared demo identity for production CRM data.
+function operatorId(): string | null {
+  const id = process.env.PROSPECTOR_OPERATOR_USER_ID;
+  return id && id !== "default-user" && /^[A-Za-z0-9_-]{3,128}$/.test(id) ? id : null;
+}
+const unavailable = () => NextResponse.json(
+  { error: "Operator identity is not configured" }, { status: 503 }
+);
+
 export async function GET(request: NextRequest) {
+  const userId = operatorId();
+  if (!userId) return unavailable();
   try {
     const { searchParams } = new URL(request.url);
     const network = searchParams.get("network");
     const status = searchParams.get("status");
     const search = searchParams.get("search");
-
     const contacts = await prisma.contact.findMany({
       where: {
-        userId: "default-user",
+        userId,
         ...(network && network !== "all" ? { network } : {}),
         ...(status && status !== "all" ? { status } : {}),
         ...(search ? { OR: [
@@ -30,8 +40,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Contact database unavailable" }, { status: 503 });
   }
 }
-
 export async function POST(request: NextRequest) {
+  const userId = operatorId();
+  if (!userId) return unavailable();
   try {
     const body = await request.json();
     if (typeof body.firstName !== "string" || !body.firstName.trim()) {
@@ -39,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
     const contact = await prisma.contact.create({
       data: {
-        userId: "default-user",
+        userId,
         firstName: body.firstName.trim(),
         lastName: body.lastName || null,
         email: body.email || null,
