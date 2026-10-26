@@ -1,70 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { configuredOperatorId } from "@/lib/operator-identity";
 
-// GET /api/campaigns/[id] - Get a campaign by ID
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// Single-operator read-only recovery. Writes remain disabled until sessions,
+// authorization and explicit campaign safety checks are implemented.
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
+  const { id } = await context.params;
+  if (!id || id.length > 128) return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
   try {
-    const { id } = await params;
-    const campaign = await prisma.campaign.findUnique({
-      where: { id },
-      include: {
-        steps: { orderBy: { order: "asc" }, include: { template: true } },
-        campaignContacts: { include: { contact: true } },
-      },
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, userId },
+      include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
     });
-
-    if (!campaign) {
-      return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-    }
-
+    if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     return NextResponse.json(campaign);
   } catch (error) {
-    console.error("Error fetching campaign:", error);
-    return NextResponse.json({ error: "Error fetching campaign" }, { status: 500 });
+    console.error("Error loading campaign:", error);
+    return NextResponse.json({ error: "Campaign database unavailable" }, { status: 503 });
   }
 }
-
-// PUT /api/campaigns/[id] - Update campaign
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-
-    const campaign = await prisma.campaign.update({
-      where: { id },
-      data: {
-        name: body.name,
-        description: body.description,
-        network: body.network,
-        status: body.status,
-        settings: body.settings ? JSON.stringify(body.settings) : undefined,
-      },
-    });
-
-    return NextResponse.json(campaign);
-  } catch (error) {
-    console.error("Error updating campaign:", error);
-    return NextResponse.json({ error: "Error updating campaign" }, { status: 500 });
-  }
-}
-
-// DELETE /api/campaigns/[id] - Delete campaign
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    await prisma.campaign.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting campaign:", error);
-    return NextResponse.json({ error: "Error deleting campaign" }, { status: 500 });
-  }
-}
+const blocked = () => NextResponse.json({ error: "Campaign modifications are disabled pending authorization" }, { status: 503 });
+export async function PUT() { return blocked(); }
+export async function DELETE() { return blocked(); }

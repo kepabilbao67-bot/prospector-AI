@@ -1,60 +1,45 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CAMPAIGNS } from "@/lib/demo-data";
+import prisma from "@/lib/prisma";
 
-let inMemoryCampaigns = [...DEMO_CAMPAIGNS];
-
-async function getCampaigns() {
+// No demo fallback. Authentication and tenant scoping are required before release.
+export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
-    const prisma = (await import("@/lib/prisma")).default;
     const campaigns = await prisma.campaign.findMany({
-      where: { userId: "default-user" },
+      where: { userId: userId },
       include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
       orderBy: { createdAt: "desc" },
     });
-    if (campaigns.length > 0) return campaigns;
-  } catch { /* DB not available */ }
-  return inMemoryCampaigns;
-}
-
-export async function GET() {
-  try {
-    const campaigns = await getCampaigns();
     return NextResponse.json({ campaigns });
-  } catch {
-    return NextResponse.json({ campaigns: DEMO_CAMPAIGNS });
+  } catch (error) {
+    console.error("Error fetching campaigns:", error);
+    return NextResponse.json({ error: "Campaign database unavailable" }, { status: 503 });
   }
 }
 
 export async function POST(request: NextRequest) {
+  const userId = configuredOperatorId();
+  if (!userId) return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
   try {
     const body = await request.json();
-    const campaign = {
-      id: `camp${Date.now()}`,
-      userId: "default-user",
-      name: body.name,
-      description: body.description || null,
-      network: body.network || "multi",
-      status: "draft",
-      settings: JSON.stringify(body.settings || { dailyLimit: 50 }),
-      stats: '{"sent":0,"replied":0,"converted":0}',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      steps: [],
-      campaignContacts: [],
-    };
-
-    try {
-      const prisma = (await import("@/lib/prisma")).default;
-      const created = await prisma.campaign.create({
-        data: { userId: "default-user", name: body.name, description: body.description, network: body.network || "multi", status: "draft", settings: JSON.stringify(body.settings || {}) },
-      });
-      return NextResponse.json(created, { status: 201 });
-    } catch {
-      inMemoryCampaigns.unshift(campaign);
-      return NextResponse.json(campaign, { status: 201 });
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
+    const created = await prisma.campaign.create({
+      data: {
+        userId: userId,
+        name: body.name.trim(),
+        description: body.description || null,
+        network: body.network || "multi",
+        status: "draft",
+        settings: JSON.stringify(body.settings || {}),
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    console.error("Error creating campaign:", error);
+    return NextResponse.json({ error: "Campaign was not saved" }, { status: 503 });
   }
 }
