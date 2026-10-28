@@ -28,16 +28,20 @@ export default function ImportPage() {
     if (!parsed) return;
     setImporting(true);
     let count = 0;
+    let failed = 0;
     for (const contact of parsed.contacts) {
-      await fetch("/api/contacts", {
+      try {
+      const response = await fetch("/api/contacts", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName: contact.firstName || "Unknown", lastName: contact.lastName || "", email: contact.email || "", company: contact.company || "", jobTitle: contact.jobTitle || "", network: contact.network || "other" }),
+        body: JSON.stringify({ firstName: contact.firstName || "Unknown", lastName: contact.lastName || "", email: contact.email || "", company: contact.company || "", jobTitle: contact.jobTitle || "", phone: contact.phone || "", notes: contact.notes || "", profileUrl: contact.profileUrl || "", network: contact.network || "other" }),
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       count++;
       setImported(count);
+      } catch { failed++; }
     }
     setImporting(false);
-    alert(`${count} contactos importados`);
+    alert(`${count} contactos confirmados; ${failed} fallidos`);
   }
 
   return (
