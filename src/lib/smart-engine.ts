@@ -412,10 +412,27 @@ export function parseCSVContacts(csvContent: string): {
   errors: string[];
   columns: string[];
 } {
-  const lines = csvContent.trim().split("\n");
-  if (lines.length < 2) return { contacts: [], errors: ["CSV vacío o sin datos"], columns: [] };
-
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/"/g, ""));
+  // RFC 4180-style CSV: quoted commas, escaped quotes and multiline cells.
+  const rows: string[][] = [];
+  let row: string[] = [], cell = "", quoted = false;
+  for (let i = 0; i < csvContent.length; i++) {
+    const ch = csvContent[i];
+    if (ch === '"') {
+      if (quoted && csvContent[i + 1] === '"') { cell += '"'; i++; }
+      else quoted = !quoted;
+    } else if (ch === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+    else if ((ch === "\\n" || ch === "\\r") && !quoted) {
+      if (ch === "\\r" && csvContent[i + 1] === "\\n") i++;
+      row.push(cell.trim()); cell = "";
+      if (row.some(v => v)) rows.push(row);
+      row = [];
+    } else { cell += ch; }
+  }
+  if (quoted) return { contacts: [], errors: ["Comillas CSV sin cerrar"], columns: [] };
+  row.push(cell.trim());
+  if (row.some(v => v)) rows.push(row);
+  if (rows.length < 2) return { contacts: [], errors: ["CSV vacío o sin datos"], columns: [] };
+  const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\\uFEFF/, ""));
   const contacts: Record<string, string>[] = [];
   const errors: string[] = [];
 
@@ -433,9 +450,9 @@ export function parseCSVContacts(csvContent: string): {
     "tags": "tags", "etiquetas": "tags",
   };
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 1; i < rows.length; i++) {
     try {
-      const values = lines[i].split(",").map(v => v.trim().replace(/"/g, ""));
+      const values = rows[i];
       const contact: Record<string, string> = {};
 
       headers.forEach((header, index) => {
