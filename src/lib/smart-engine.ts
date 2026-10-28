@@ -421,8 +421,8 @@ export function parseCSVContacts(csvContent: string): {
       if (quoted && csvContent[i + 1] === '"') { cell += '"'; i++; }
       else quoted = !quoted;
     } else if (ch === "," && !quoted) { row.push(cell.trim()); cell = ""; }
-    else if ((ch === "\\n" || ch === "\\r") && !quoted) {
-      if (ch === "\\r" && csvContent[i + 1] === "\\n") i++;
+    else if ((ch === "\n" || ch === "\r") && !quoted) {
+      if (ch === "\r" && csvContent[i + 1] === "\n") i++;
       row.push(cell.trim()); cell = "";
       if (row.some(v => v)) rows.push(row);
       row = [];
@@ -432,7 +432,7 @@ export function parseCSVContacts(csvContent: string): {
   row.push(cell.trim());
   if (row.some(v => v)) rows.push(row);
   if (rows.length < 2) return { contacts: [], errors: ["CSV vacío o sin datos"], columns: [] };
-  const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\\uFEFF/, ""));
+  const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ""));
   const contacts: Record<string, string>[] = [];
   const errors: string[] = [];
 
