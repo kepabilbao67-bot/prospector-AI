@@ -71,13 +71,13 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Contactos</h1>
-          <p className="text-xs text-gray-500">{total} registros</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">CRM · Contactos</h1><p className="mt-1 text-sm text-indigo-600">Central de prospección y oportunidades comerciales</p>
+          <p className="text-sm text-slate-500">{total} registros</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800">
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition hover:from-indigo-700 hover:to-violet-700">
           Añadir contacto
         </button>
       </div>
