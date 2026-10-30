@@ -33,10 +33,7 @@ export function MobileNav() {
                 isActive ? "text-indigo-700 bg-indigo-50" : "text-slate-500 hover:text-indigo-700"
               )}
             >
-              <div className={cn(
-                "w-1 h-1 rounded-full mb-0.5 transition-all",
-                isActive ? "bg-gray-900" : "bg-transparent"
-              )} />
+              <item.icon aria-hidden="true" size={19} strokeWidth={isActive ? 2.5 : 1.8} />
               <span className="text-[11px] font-medium">{item.name}</span>
             </Link>
           );
