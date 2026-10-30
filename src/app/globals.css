@@ -64,3 +64,36 @@ input, textarea, select {
   transform: scale(0.98);
   transition: transform 0.1s;
 }
+
+/* Unified visual system for Prospector IA + Publicidad 360.
+   Applied only inside the dashboard shell, without changing API behavior. */
+.prospector-shell {
+  --p360-primary: #4f46e5;
+  --p360-accent: #7c3aed;
+  --p360-surface: #ffffff;
+  --p360-border: #e2e8f0;
+  background: #f5f6fb;
+}
+.prospector-shell main { min-width: 0; }
+.prospector-shell main :is(input, textarea, select) {
+  border-radius: 0.75rem;
+  accent-color: var(--p360-primary);
+}
+.prospector-shell main :is(input, textarea, select):focus-visible,
+.prospector-shell main :is(button, a):focus-visible {
+  outline: 2px solid var(--p360-primary);
+  outline-offset: 2px;
+}
+.prospector-shell main :is(button, a) {
+  transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.prospector-shell main :is(table) { width: 100%; }
+.prospector-shell main :is(th) { color: #475569; font-weight: 600; }
+.prospector-shell main :is(td, th) { vertical-align: middle; }
+.prospector-shell main :is(.bg-white) { box-shadow: 0 3px 20px rgba(15,23,42,.035); }
+@media (prefers-reduced-motion: reduce) {
+  .prospector-shell *, .prospector-shell *::before, .prospector-shell *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
