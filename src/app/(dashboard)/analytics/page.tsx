@@ -16,29 +16,33 @@ const networkLabels: Record<string, string> = {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
 
   async function loadAnalytics() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/analytics?days=${days}`);
-      setData(await res.json());
-    } catch { /* demo data from API */ }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const result = await res.json();
+      if (!result?.stats || !result?.networkStats) throw new Error("Respuesta incompleta");
+      setData(result);
+    } catch (e) { setData(null); setError(e instanceof Error ? e.message : "No disponible"); }
     setLoading(false);
   }
 
   useEffect(() => { loadAnalytics(); }, [days]);
 
-  if (loading || !data) {
-    return <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>;
-  }
+  if (loading) return <div className="p-8 text-center text-sm text-slate-500" role="status">Consultando indicadores…</div>;
+  if (!data) return <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800">No se pueden consultar las estadísticas ({error || "sin datos"}). No se muestran cifras ficticias.</div>;
 
   const { stats } = data;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Analytics</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Analytics · Resultados</h1>
         <div className="flex gap-1">
           {[7, 14, 30, 90].map((d) => (
             <button key={d} onClick={() => setDays(d)}
@@ -50,7 +54,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: "Enviados", value: stats.messagesSent },
           { label: "Respuestas", value: stats.repliesReceived },
@@ -58,27 +62,27 @@ export default function AnalyticsPage() {
           { label: "Perfiles vistos", value: stats.profilesViewed },
           { label: "Conversiones", value: stats.conversions },
         ].map((m) => (
-          <div key={m.label} className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-2xl font-semibold text-gray-900">{m.value}</p>
+          <div key={m.label} className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-sm">
+            <p className="text-3xl font-extrabold text-indigo-950">{m.value}</p>
             <p className="text-[11px] text-gray-500 mt-0.5">{m.label}</p>
           </div>
         ))}
       </div>
 
       {/* Rates */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-5">
           <p className="text-3xl font-semibold text-gray-900">{data.replyRate}%</p>
           <p className="text-xs text-gray-500 mt-1">Tasa de respuesta</p>
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-gray-700 rounded-full" style={{ width: `${Math.min(parseFloat(data.replyRate), 100)}%` }} />
+            <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${Math.min(parseFloat(data.replyRate), 100)}%` }} />
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-5">
           <p className="text-3xl font-semibold text-gray-900">{data.conversionRate}%</p>
           <p className="text-xs text-gray-500 mt-1">Tasa de conversión</p>
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-gray-700 rounded-full" style={{ width: `${Math.min(parseFloat(data.conversionRate), 100)}%` }} />
+            <div className="h-full bg-violet-600 rounded-full" style={{ width: `${Math.min(parseFloat(data.conversionRate), 100)}%` }} />
           </div>
         </div>
       </div>
