@@ -64,3 +64,87 @@ input, textarea, select {
   transform: scale(0.98);
   transition: transform 0.1s;
 }
+
+
+/* Prospector 360 shared design layer: applies across dashboard tools. */
+:root {
+  --p360-primary: #635bdb;
+  --p360-primary-strong: #4f46b5;
+  --p360-accent: #0d9488;
+  --p360-surface: #ffffff;
+  --p360-border: #e2e8f0;
+  --p360-radius: 1rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .p360-workspace a, .p360-workspace button, .p360-workspace input, .p360-workspace select {
+    transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  }
+}
+.p360-workspace { background: radial-gradient(ellipse at top right, #ede9fe 0%, #f8fafc 45%, #f1f5f9 100%); }
+.p360-workspace :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {
+  border-radius: .75rem;
+}
+.p360-workspace :is(input,select,textarea):focus-visible,
+.p360-workspace :is(button,a):focus-visible {
+  outline: 2px solid var(--p360-primary);
+  outline-offset: 3px;
+}
+.p360-workspace :is(table) { border-collapse: separate; border-spacing: 0; width: 100%; }
+.p360-workspace :is(th) { color: #475569; font-size: .75rem; letter-spacing: .035em; }
+.p360-workspace :is(th,td) { border-bottom: 1px solid var(--p360-border); }
+.p360-workspace :is(button):disabled { cursor: not-allowed; }
+.p360-workspace ::selection { background: #ddd6fe; color: #312e81; }
+@media (prefers-reduced-motion: reduce) {
+  .p360-workspace *, .p360-workspace *::before, .p360-workspace *::after {
+    animation-duration: .01ms !important; transition-duration: .01ms !important;
+  }
+}
+
+
+/* Full application visual system; covers all routed workspaces, not only Home. */
+.p360-content { --p360-shadow: 0 12px 34px -24px rgba(52,37,125,.38); }
+.p360-content > div { animation: fadeIn .28s ease-out; }
+.p360-content h1 { color:#0f172a; letter-spacing:-.035em; font-weight:750; }
+.p360-content h2 { letter-spacing:-.025em; }
+.p360-content > div > div:first-child h1 {
+  font-size:clamp(1.35rem,2.2vw,1.85rem); line-height:1.2;
+}
+.p360-content :is(.bg-white.border,.border.bg-white,.bg-white.rounded-lg,.bg-white.rounded-xl) {
+  border-color:#e4e4f4;
+  border-radius:1rem;
+  box-shadow:var(--p360-shadow);
+}
+.p360-content :is(.bg-gray-50,.bg-slate-50) { border-radius:.85rem; }
+.p360-content :is(button.bg-gray-900,a.bg-gray-900,button.bg-blue-600,a.bg-blue-600) {
+  background:linear-gradient(115deg,#5548ca,#7c3aed);
+  color:#fff;
+  border-radius:.8rem;
+  box-shadow:0 7px 15px -10px #5644d1;
+}
+.p360-content :is(button.bg-gray-900,a.bg-gray-900,button.bg-blue-600,a.bg-blue-600):hover {
+  background:linear-gradient(115deg,#4338a5,#6d28d9);
+  filter:brightness(1.03);
+}
+.p360-content :is(.text-blue-600,.text-blue-700) { color:#5b45bf; }
+.p360-content :is(.border-gray-200) { border-color:#e2e3f0; }
+.p360-content :is(input,textarea,select) {
+  background:#fff;
+  border:1px solid #dfe2ee;
+  min-height:2.55rem;
+  color:#172033;
+}
+.p360-content :is(input,textarea,select):hover { border-color:#a5a0d9; }
+.p360-content :is(input,textarea,select):focus-visible {
+  border-color:#6856cc;
+  box-shadow:0 0 0 3px rgba(104,86,204,.12);
+}
+.p360-content :is(th) { background:#f5f4ff; padding-block:.9rem; text-transform:uppercase; }
+.p360-content :is(tr):hover td { background:#faf9ff; }
+.p360-content :is(.rounded-full.bg-green-500,.rounded-full.bg-blue-600) { box-shadow:0 0 0 3px #ede9fe; }
+.p360-content :is(.text-gray-400) { color:#64748b; }
+.p360-content :is(.bg-gray-900.text-white) { background:linear-gradient(115deg,#5548ca,#7c3aed); }
+@media(max-width:640px) {
+ .p360-content > div > div:first-child { gap:.75rem; }
+ .p360-content :is(table) { font-size:.82rem; }
+ .p360-content :is(.grid-cols-4,.grid-cols-5) { gap:.6rem; }
+}

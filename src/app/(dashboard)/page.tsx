@@ -1,249 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, BarChart3, Megaphone, MessageSquare, RefreshCw, Sparkles, Target, Users, Workflow } from "lucide-react";
 
-interface Campaign {
-  id: string;
-  name: string;
-  network: string;
-  status: string;
-  stats: string;
+type Campaign = { id: string; name: string; network: string; status: string; stats: string | null };
+type Contact = { id: string; firstName: string; lastName: string | null; company: string | null; status: string; network: string };
+type Analytics = { stats: { messagesSent: number; repliesReceived: number; connectionsAccepted: number; conversions: number }; replyRate: string; conversionRate: string };
+const networkNames: Record<string,string> = { linkedin:"LinkedIn",fiverr:"Fiverr",instagram:"Instagram",email:"Email",whatsapp:"WhatsApp",twitter:"X",facebook:"Facebook" };
+const statusNames: Record<string,string> = { active:"Activa",paused:"Pausada",draft:"Borrador",completed:"Completada",new:"Nuevo",contacted:"Contactado",replied:"Respondido",qualified:"Calificado",converted:"Convertido",lost:"Perdido" };
+const tones: Record<string,string> = { active:"bg-emerald-100 text-emerald-700",completed:"bg-indigo-100 text-indigo-700",paused:"bg-amber-100 text-amber-700",draft:"bg-slate-100 text-slate-600",converted:"bg-emerald-100 text-emerald-700",qualified:"bg-violet-100 text-violet-700",replied:"bg-sky-100 text-sky-700" };
+const shortcuts = [
+  { href:"/wizard",title:"Crear campaña",detail:"Asistente para preparar una campaña",icon:Sparkles,color:"from-violet-600 to-indigo-600",light:false },
+  { href:"/contacts",title:"Prospectar clientes",detail:"CRM y oportunidades comerciales",icon:Users,color:"",light:true },
+  { href:"/pipeline",title:"Pipeline de ventas",detail:"Visualiza el seguimiento",icon:Target,color:"",light:true },
+  { href:"/campaigns",title:"Publicidad 360",detail:"Gestiona campañas y contenidos",icon:Megaphone,color:"",light:true },
+];
+function parseStats(value: string | null): { sent?: number; replied?: number } {
+  try { const parsed: unknown = JSON.parse(value || "{}"); if (!parsed || typeof parsed !== "object") return {}; const p = parsed as Record<string,unknown>; return { sent: typeof p.sent === "number" ? p.sent : undefined, replied:typeof p.replied === "number" ? p.replied : undefined }; } catch { return {}; }
 }
-
-interface Contact {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  network: string;
-  status: string;
-  company: string | null;
+async function readApi(path:string):Promise<unknown> {
+  const response=await fetch(path,{cache:"no-store"});
+  if(!response.ok) throw new Error("No se pudo consultar "+path+" (HTTP "+response.status+")");
+  return response.json();
 }
-
-interface AnalyticsData {
-  stats: { messagesSent: number; repliesReceived: number; connectionsAccepted: number; conversions: number };
-  replyRate: string;
-  conversionRate: string;
-}
-
-const networkLabels: Record<string, string> = {
-  linkedin: "LinkedIn",
-  fiverr: "Fiverr",
-  twitter: "Twitter",
-  instagram: "Instagram",
-  email: "Email",
-  whatsapp: "WhatsApp",
-  tiktok: "TikTok",
-  facebook: "Facebook",
-};
-
-const statusLabels: Record<string, string> = {
-  new: "Nuevo",
-  contacted: "Contactado",
-  replied: "Respondido",
-  qualified: "Calificado",
-  converted: "Convertido",
-  lost: "Perdido",
-  active: "Activa",
-  paused: "Pausada",
-  draft: "Borrador",
-  completed: "Completada",
-};
-
 export default function DashboardPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-  const [hasData, setHasData] = useState(false);
-
-  async function seedData() {
-    setSeeding(true);
+  const [campaigns,setCampaigns]=useState<Campaign[]>([]);
+  const [contacts,setContacts]=useState<Contact[]>([]);
+  const [analytics,setAnalytics]=useState<Analytics | null>(null);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState<string | null>(null);
+  const reload=useCallback(async ()=>{
+    setLoading(true);setError(null);
     try {
-      await fetch("/api/seed", { method: "POST" });
-      setHasData(true);
-      await loadData();
-    } catch (e) {
-      console.error(e);
-    }
-    setSeeding(false);
-  }
-
-  async function loadData() {
-    try {
-      const [c, co, a] = await Promise.all([
-        fetch("/api/campaigns").then((r) => r.json()).catch(() => ({ campaigns: [] })),
-        fetch("/api/contacts?limit=5").then((r) => r.json()).catch(() => ({ contacts: [] })),
-        fetch("/api/analytics?days=7").then((r) => r.json()).catch(() => null),
-      ]);
-      setCampaigns(c.campaigns || []);
-      setContacts(co.contacts || []);
-      setAnalytics(a);
-      if ((c.campaigns || []).length > 0 || (co.contacts || []).length > 0) {
-        setHasData(true);
-      }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  }
-
-  useEffect(() => { loadData(); }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!hasData) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] gap-6 px-4 max-w-md mx-auto">
-        <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center">
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+      const [campaignData,contactData,analyticsData]=await Promise.all([readApi("/api/campaigns"),readApi("/api/contacts?limit=5"),readApi("/api/analytics?days=7")]);
+      const c=campaignData as {campaigns?:Campaign[]};
+      const co=contactData as {contacts?:Contact[]};
+      const a=analyticsData as Analytics;
+      if(!Array.isArray(c.campaigns)||!Array.isArray(co.contacts)||!a?.stats) throw new Error("La API devolvió datos incompletos");
+      setCampaigns(c.campaigns);setContacts(co.contacts);setAnalytics(a);
+    }catch(e){setCampaigns([]);setContacts([]);setAnalytics(null);setError(e instanceof Error?e.message:"Error al cargar los datos");}
+    finally {setLoading(false);}
+  },[]);
+  useEffect(()=>{void reload();},[reload]);
+  const stats=analytics?.stats;
+  const metrics=[
+    {title:"Mensajes registrados",value:stats?.messagesSent,detail:"Período consultado: 7 días",icon:MessageSquare,color:"bg-blue-100 text-blue-700"},
+    {title:"Respuestas",value:stats?.repliesReceived,detail:analytics?analytics.replyRate+"% tasa":"Sin datos",icon:Workflow,color:"bg-violet-100 text-violet-700"},
+    {title:"Conexiones",value:stats?.connectionsAccepted,detail:"Aceptadas",icon:Users,color:"bg-amber-100 text-amber-700"},
+    {title:"Conversiones",value:stats?.conversions,detail:analytics?analytics.conversionRate+"% tasa":"Sin datos",icon:BarChart3,color:"bg-emerald-100 text-emerald-700"},
+  ];
+  return <div className="space-y-7 pb-8">
+    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-violet-900 px-6 py-7 text-white shadow-xl md:px-9 md:py-9">
+      <div className="pointer-events-none absolute -right-12 -top-28 h-72 w-72 rounded-full bg-fuchsia-400/20 blur-3xl" />
+      <div className="relative flex flex-wrap items-center justify-between gap-5">
+        <div className="max-w-2xl"><p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-violet-200">Centro comercial · Kepa 360</p>
+          <h1 className="text-2xl font-bold tracking-tight md:text-4xl">Prospector IA <span className="text-fuchsia-300">+ Publicidad 360</span></h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-200">Gestiona prospectos, campañas y oportunidades desde un único panel. Las comunicaciones reales requieren autorización.</p>
         </div>
-        <h2 className="text-2xl font-semibold text-gray-900 text-center">
-          Bienvenido a ProspectorAI
-        </h2>
-        <p className="text-gray-500 text-center text-sm leading-relaxed">
-          Plataforma de captación de clientes con inteligencia artificial.
-          Automatiza tu prospección en todas las redes sociales.
-        </p>
-        <button
-          onClick={seedData}
-          disabled={seeding}
-          className="w-full px-6 py-3.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
-        >
-          {seeding ? "Configurando..." : "Inicializar plataforma"}
-        </button>
-        <p className="text-xs text-gray-400 text-center">
-          Esto cargará datos de ejemplo para que explores la herramienta.
-        </p>
+        <div className="flex gap-2"><Link href="/wizard" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-violet-100"><Sparkles size={16}/> Nueva campaña <ArrowRight size={15}/></Link></div>
       </div>
-    );
-  }
-
-  const stats = analytics?.stats;
-
-  return (
-    <div className="space-y-6">
-      {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Mensajes enviados", value: stats?.messagesSent || 0, sub: "Últimos 7 días" },
-          { label: "Respuestas", value: stats?.repliesReceived || 0, sub: `${analytics?.replyRate || 0}% tasa` },
-          { label: "Conexiones", value: stats?.connectionsAccepted || 0, sub: "Aceptadas" },
-          { label: "Conversiones", value: stats?.conversions || 0, sub: `${analytics?.conversionRate || 0}% tasa` },
-        ].map((s) => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{s.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Link href="/wizard" className="flex items-center gap-3 p-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
-          <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          </div>
-          <div>
-            <p className="font-medium text-sm">Nueva campaña con IA</p>
-            <p className="text-xs text-gray-400">Configuración guiada en 4 pasos</p>
-          </div>
-        </Link>
-        <Link href="/contacts" className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-          </div>
-          <div>
-            <p className="font-medium text-sm text-gray-900">Gestionar contactos</p>
-            <p className="text-xs text-gray-500">CRM multi-red</p>
-          </div>
-        </Link>
-        <Link href="/pipeline" className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
-          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-          </div>
-          <div>
-            <p className="font-medium text-sm text-gray-900">Pipeline de ventas</p>
-            <p className="text-xs text-gray-500">Kanban visual</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* Campaigns */}
-      {campaigns.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Campañas</h2>
-            <Link href="/campaigns" className="text-xs text-blue-600 hover:text-blue-700 font-medium">Ver todas</Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {campaigns.slice(0, 4).map((campaign) => {
-              const s = JSON.parse(campaign.stats || "{}");
-              return (
-                <div key={campaign.id} className="px-5 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{campaign.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {networkLabels[campaign.network] || campaign.network} &middot; {statusLabels[campaign.status] || campaign.status}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right text-xs">
-                    <p className="font-medium text-gray-900">{s.sent || 0} enviados</p>
-                    <p className="text-gray-500">{s.replied || 0} respuestas</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Recent contacts */}
-      {contacts.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Leads recientes</h2>
-            <Link href="/contacts" className="text-xs text-blue-600 hover:text-blue-700 font-medium">Ver todos</Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {contacts.map((contact) => (
-              <div key={contact.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
-                    {contact.firstName[0]}{contact.lastName?.[0] || ""}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{contact.firstName} {contact.lastName}</p>
-                    <p className="text-xs text-gray-500">{contact.company || "Sin empresa"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">{networkLabels[contact.network]}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                    contact.status === "converted" ? "bg-green-50 text-green-700" :
-                    contact.status === "replied" ? "bg-blue-50 text-blue-700" :
-                    contact.status === "qualified" ? "bg-purple-50 text-purple-700" :
-                    "bg-gray-50 text-gray-600"
-                  }`}>
-                    {statusLabels[contact.status] || contact.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    </section>
+    <section aria-label="Indicadores comerciales">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Resumen comercial</h2><p className="text-xs text-slate-500">Información recibida de las APIs; no equivale a envíos verificados externamente.</p></div><button type="button" disabled={loading} onClick={()=>void reload()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={14} className={loading?"animate-spin":""}/>Actualizar</button></div>
+      {error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Datos no disponibles: {error}. No se muestran cifras ficticias.</div>}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(m=><div key={m.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{m.title}</span><span className={`rounded-xl p-2 ${m.color}`}><m.icon size={19}/></span></div><p className="text-3xl font-bold tabular-nums text-slate-950">{loading?"…":m.value ?? "—"}</p><p className="mt-1 text-xs text-slate-500">{m.detail}</p></div>)}</div>
+    </section>
+    <section><h2 className="mb-3 font-bold text-slate-900">Acciones rápidas</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{shortcuts.map(s=><Link key={s.href} href={s.href} className={`group rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${s.light?"border-slate-200 bg-white":"border-transparent bg-gradient-to-br "+s.color+" text-white"}`}><s.icon size={23} className={s.light?"text-indigo-600":"text-white"}/><p className={`mt-4 font-bold ${s.light?"text-slate-900":"text-white"}`}>{s.title}</p><p className={`mt-1 text-xs ${s.light?"text-slate-500":"text-violet-100"}`}>{s.detail}</p><ArrowRight size={17} className="mt-4 opacity-60 transition group-hover:translate-x-1"/></Link>)}</div></section>
+    <div className="grid gap-5 xl:grid-cols-2">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h2 className="font-bold text-slate-900">Campañas</h2><p className="text-xs text-slate-500">Estados registrados en el CRM</p></div><Link href="/campaigns" className="text-sm font-semibold text-indigo-600 hover:underline">Ver todas</Link></div>
+      {campaigns.length===0?<p className="p-6 text-sm text-slate-500">{loading?"Cargando campañas…":error?"No se pueden consultar campañas.":"No hay campañas registradas."}</p>:<div className="divide-y divide-slate-100">{campaigns.slice(0,5).map(c=>{const s=parseStats(c.stats);return <div key={c.id} className="flex items-center justify-between gap-3 p-4 hover:bg-slate-50"><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{c.name}</p><p className="mt-1 text-xs text-slate-500">{networkNames[c.network]||c.network}</p></div><div className="text-right"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${tones[c.status]||"bg-slate-100 text-slate-600"}`}>{statusNames[c.status]||c.status}</span><p className="mt-1 text-xs text-slate-500">{s.sent===undefined?"Sin métricas":s.sent+" enviados registrados"}</p></div></div>})}</div>}</section>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 p-5"><div><h2 className="font-bold text-slate-900">Leads recientes</h2><p className="text-xs text-slate-500">Contactos disponibles en el CRM</p></div><Link href="/contacts" className="text-sm font-semibold text-indigo-600 hover:underline">Ver todos</Link></div>
+      {contacts.length===0?<p className="p-6 text-sm text-slate-500">{loading?"Cargando contactos…":error?"No se pueden consultar contactos.":"No hay contactos registrados."}</p>:<div className="divide-y divide-slate-100">{contacts.map(c=><div key={c.id} className="flex items-center gap-3 p-4 hover:bg-slate-50"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xs font-bold text-indigo-700">{(c.firstName?.[0]||"?")+(c.lastName?.[0]||"")}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-900">{c.firstName} {c.lastName||""}</p><p className="truncate text-xs text-slate-500">{c.company||"Sin empresa"} · {networkNames[c.network]||c.network}</p></div><span className={`rounded-full px-2 py-1 text-xs font-medium ${tones[c.status]||"bg-slate-100 text-slate-600"}`}>{statusNames[c.status]||c.status}</span></div>)}</div>}</section>
     </div>
-  );
+    <p className="text-center text-xs text-slate-400">Prospector IA 360 · Panel de gestión. La disponibilidad de datos depende de las APIs y los permisos configurados.</p>
+  </div>;
 }

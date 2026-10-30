@@ -55,14 +55,14 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-screen w-60 flex-col bg-white border-r border-gray-200">
+    <div className="flex h-screen w-60 flex-col border-r border-violet-100 bg-white/95 shadow-sm">
       {/* Logo */}
       <div className="flex h-14 items-center px-5 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </div>
-          <span className="font-semibold text-gray-900 text-sm">ProspectorAI</span>
+          <span className="font-semibold text-gray-900 text-sm">Prospector <span className="text-indigo-600">360</span></span>
         </div>
       </div>
 
@@ -77,10 +77,10 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors",
+                "flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
                 isActive
-                  ? "bg-gray-100 text-gray-900"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  ? "bg-indigo-50 text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:text-indigo-700 hover:bg-indigo-50/60"
               )}
             >
               <NavIcon name={item.icon} />
@@ -97,7 +97,7 @@ export function Sidebar() {
         </div>
         <div>
           <p className="text-xs font-medium text-gray-900">Mi Cuenta</p>
-          <p className="text-[10px] text-gray-500">Plan Pro</p>
+          <p className="text-[10px] text-gray-500">Cuenta · estado sin verificar</p>
         </div>
       </div>
     </div>
