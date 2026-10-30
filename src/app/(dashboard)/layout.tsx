@@ -9,7 +9,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="p360-workspace flex h-screen bg-slate-50">
       {/* Desktop sidebar - hidden on mobile */}
       <div className="hidden md:block">
         <Sidebar />
