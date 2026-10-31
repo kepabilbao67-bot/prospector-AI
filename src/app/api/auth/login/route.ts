@@ -13,7 +13,7 @@ export async function POST(request:NextRequest){
  const user=await prisma.user.findUnique({where:{email:email.trim().toLowerCase()},select:{id:true,password:true}});
  const valid=user&&user.password.startsWith("$2")&&await compare(password,user.password);
  if(!valid)return NextResponse.json({error:"Credenciales inválidas"},{status:401});
- const token=createSession(user.id);
+ const token=await createSession(user.id);
  const response=NextResponse.json({ok:true});
  response.cookies.set(SESSION_COOKIE,token,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:SESSION_MAX_AGE});
  return response;
