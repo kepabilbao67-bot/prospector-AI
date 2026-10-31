@@ -1,79 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CONTACTS } from "@/lib/demo-data";
-
-let inMemoryContacts = [...DEMO_CONTACTS];
-
-async function getContacts() {
-  try {
-    const prisma = (await import("@/lib/prisma")).default;
-    const contacts = await prisma.contact.findMany({
-      where: { userId: "default-user" },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    if (contacts.length > 0) return contacts;
-  } catch { /* DB not available */ }
-  return inMemoryContacts;
+import {NextRequest,NextResponse} from "next/server";
+import prisma from "@/lib/prisma";
+import {SESSION_COOKIE,verifySession} from "@/lib/session";
+function identity(request:NextRequest){return verifySession(request.cookies.get(SESSION_COOKIE)?.value)?.userId;}
+export async function GET(request:NextRequest){
+ const userId=identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
+ try {
+  const {searchParams}=new URL(request.url);
+  const network=searchParams.get("network"), status=searchParams.get("status"), search=searchParams.get("search");
+  const contacts=await prisma.contact.findMany({
+   where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{}),
+    ...(search?{OR:[{firstName:{contains:search}},{lastName:{contains:search}},{company:{contains:search}}]}:{})},
+   orderBy:{createdAt:"desc"},take:50
+  });
+  return NextResponse.json({contacts,total:contacts.length,page:1,totalPages:1});
+ }catch{return NextResponse.json({error:"CRM no disponible"},{status:503});}
 }
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const network = searchParams.get("network");
-    const status = searchParams.get("status");
-    const search = searchParams.get("search");
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contacts: any[] = await getContacts();
-
-    if (network && network !== "all") contacts = contacts.filter((c: any) => c.network === network);
-    if (status && status !== "all") contacts = contacts.filter((c: any) => c.status === status);
-    if (search) {
-      const s = search.toLowerCase();
-      contacts = contacts.filter((c: any) =>
-        c.firstName.toLowerCase().includes(s) ||
-        (c.lastName || "").toLowerCase().includes(s) ||
-        (c.company || "").toLowerCase().includes(s)
-      );
-    }
-
-    return NextResponse.json({ contacts, total: contacts.length, page: 1, totalPages: 1 });
-  } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ contacts: DEMO_CONTACTS, total: DEMO_CONTACTS.length, page: 1, totalPages: 1 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const newContact = {
-      id: `c${Date.now()}`,
-      userId: "default-user",
-      firstName: body.firstName || "Unknown",
-      lastName: body.lastName || null,
-      email: body.email || null,
-      company: body.company || null,
-      jobTitle: body.jobTitle || null,
-      network: body.network || "other",
-      status: "new",
-      score: 0,
-      tags: JSON.stringify(body.tags || []),
-      profileUrl: body.profileUrl || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      const prisma = (await import("@/lib/prisma")).default;
-      const contact = await prisma.contact.create({ data: newContact as never });
-      return NextResponse.json(contact, { status: 201 });
-    } catch {
-      inMemoryContacts.unshift(newContact as typeof inMemoryContacts[0]);
-      return NextResponse.json(newContact, { status: 201 });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
-  }
+export async function POST(request:NextRequest){
+ const userId=identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
+ let data:unknown;try{data=await request.json();}catch{return NextResponse.json({error:"JSON inválido"},{status:400});}
+ if(!data||typeof data!=="object")return NextResponse.json({error:"Datos inválidos"},{status:400});
+ const p=data as Record<string,unknown>;
+ if(typeof p.firstName!=="string"||!p.firstName.trim()||p.firstName.length>120)return NextResponse.json({error:"Nombre obligatorio"},{status:400});
+ const text=(key:string)=>typeof p[key]==="string"?(p[key] as string).slice(0,500):null;
+ try{
+  const contact=await prisma.contact.create({data:{
+   userId,firstName:p.firstName.trim(),lastName:text("lastName"),email:text("email"),
+   company:text("company"),jobTitle:text("jobTitle"),network:text("network")||"other",
+   profileUrl:text("profileUrl"),tags:"[]",status:"new",score:0,
+  }});
+  return NextResponse.json(contact,{status:201});
+ }catch{return NextResponse.json({error:"No se pudo guardar el contacto"},{status:503});}
 }
