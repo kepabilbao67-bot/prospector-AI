@@ -1,9 +1,9 @@
 import {NextRequest,NextResponse} from "next/server";
 import {SESSION_COOKIE,verifySession} from "@/lib/session";
-export function proxy(request:NextRequest){
+export async function proxy(request:NextRequest){
  const path=request.nextUrl.pathname;
  if(path==="/login"||path==="/access-required"||path==="/api/auth/login"||path==="/api/auth/logout")return NextResponse.next();
- const session=verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+ const session=await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
  if(!session){
   if(path.startsWith("/api/"))return NextResponse.json({error:"Unauthorized"},{status:401});
   return NextResponse.redirect(new URL("/login",request.url));
