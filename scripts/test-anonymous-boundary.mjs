@@ -25,5 +25,14 @@ try {
   const r=await fetch(origin+path,{redirect:"manual"});
   assert.equal(r.status,401,`${path} must reject anonymous access`);
  }
- console.log("PASS: 11 private pages redirected, 3 APIs returned 401 (anonymous only)");
+ // Forged cookies must never grant access, even when their payload mentions a user.
+ const forged=Buffer.from(JSON.stringify({userId:"default-user",exp:Math.floor(Date.now()/1000)+3600})).toString("base64url")+".invalid";
+ for(const path of ["/contacts","/api/contacts"]){
+  const r=await fetch(origin+path,{redirect:"manual",headers:{cookie:"prospector_session="+forged,"x-user-id":"default-user"}});
+  assert.equal(r.status,path.startsWith("/api/")?401:307,`${path} accepted a forged cookie or identity header`);
+ }
+ // Login must reject malformed JSON without disclosing information.
+ const bad=await fetch(origin+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:"{"});
+ assert.equal(bad.status,400,"Malformed login request must return 400");
+ console.log("PASS: 11 pages redirect, 3 APIs reject anonymous, forged cookie rejected, malformed login rejected");
 }finally{server.kill();}
