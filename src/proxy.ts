@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-
-// P0 fail-closed barrier. This is intentionally NOT a login implementation.
-// Do not remove until server-verified sessions AND per-user database scoping exist.
-// All private routes and APIs are denied regardless of client-provided headers.
-export function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Authentication is not configured" }, { status: 401 });
-  }
-  if (request.nextUrl.pathname === "/access-required") return NextResponse.next();
-  return NextResponse.redirect(new URL("/access-required", request.url));
+import {NextRequest,NextResponse} from "next/server";
+import {SESSION_COOKIE,verifySession} from "@/lib/session";
+export function proxy(request:NextRequest){
+ const path=request.nextUrl.pathname;
+ if(path==="/login"||path==="/access-required"||path==="/api/auth/login"||path==="/api/auth/logout")return NextResponse.next();
+ const session=verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+ if(!session){
+  if(path.startsWith("/api/"))return NextResponse.json({error:"Unauthorized"},{status:401});
+  return NextResponse.redirect(new URL("/login",request.url));
+ }
+ // Keep all APIs denied except the explicitly audited CRM read API.
+ // Do not forward userId as a trusted request header; route reads signed cookie again.
+ if(path.startsWith("/api/")&&path!=="/api/contacts")return NextResponse.json({error:"Endpoint pending tenant isolation"},{status:503});
+ return NextResponse.next();
 }
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/|sw.js|access-required).*)"],
-};
+export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/|sw.js).*)"]};
