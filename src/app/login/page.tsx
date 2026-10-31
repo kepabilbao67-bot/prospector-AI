@@ -1,0 +1,8 @@
+"use client";
+import {useState,type FormEvent} from "react";
+export default function LoginPage(){
+ const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [error,setError]=useState("");const [busy,setBusy]=useState(false);
+ async function login(e:FormEvent){e.preventDefault();setBusy(true);setError("");
+ try{const r=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,password})});if(!r.ok)throw new Error(r.status===401?"Credenciales inválidas":"Servicio no disponible");window.location.assign("/");}catch(e){setError(e instanceof Error?e.message:"Error de acceso");}finally{setBusy(false);}}
+ return <main className="min-h-screen flex items-center justify-center bg-slate-100 p-6"><form onSubmit={login} className="w-full max-w-md space-y-4 rounded-2xl bg-white p-8 shadow-lg"><h1 className="text-2xl font-bold">Acceder a Prospector 360</h1><p className="text-sm text-slate-500">Solo cuentas previamente creadas. No hay registro público.</p><label className="block text-sm">Correo<input className="mt-1 w-full rounded-xl border p-3" type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label className="block text-sm">Contraseña<input className="mt-1 w-full rounded-xl border p-3" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<p role="alert" className="text-red-700">{error}</p>}<button disabled={busy} className="w-full rounded-xl bg-indigo-700 p-3 font-semibold text-white disabled:opacity-50">{busy?"Comprobando…":"Entrar"}</button></form></main>;
+}
