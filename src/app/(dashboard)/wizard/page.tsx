@@ -34,14 +34,19 @@ export default function WizardPage() {
   });
   const [result, setResult] = useState<GeneratedCampaign | null>(null);
   const [benefitInput, setBenefitInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   async function generateCampaign() {
     setStep("generating");
+    setError(null);
+    try {
     const strategyRes = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "generate_strategy", params: { network: data.network, objective: data.objective, product: { name: data.product.name, price: data.product.price }, dailyBudgetTime: data.effort } }),
     });
+    if (!strategyRes.ok) throw new Error(`Estrategia no disponible (${strategyRes.status})`);
     const strategy = await strategyRes.json();
 
     const messages: string[] = [];
@@ -51,21 +56,28 @@ export default function WizardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "generate_message", context: { contact: { firstName: "{{nombre}}", company: "{{empresa}}", jobTitle: "{{cargo}}", network: data.network }, product: data.product.name ? data.product : undefined, tone: data.tone, language: "es", messageType: type } }),
       });
+      if (!res.ok) throw new Error(`Generación de mensaje no disponible (${res.status})`);
       const msg = await res.json();
+      if (typeof msg.message !== "string") throw new Error("La respuesta de IA no contiene un mensaje válido");
       messages.push(msg.message);
     }
     setResult({ ...strategy, messages });
     setStep("result");
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo generar la campaña"); setStep("tone"); }
   }
 
   async function saveCampaign() {
     if (!result) return;
-    await fetch("/api/campaigns", {
+    setSaveStatus(null);
+    try {
+    const response = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: result.name, description: `Generada por IA - ${data.objective}`, network: data.network, settings: result.settings, steps: result.steps.map((s) => ({ type: s.type, network: s.network, delayHours: s.delayHours, config: { description: s.description } })) }),
     });
-    alert("Campaña creada correctamente");
+    if (!response.ok) throw new Error(`No se pudo guardar (${response.status})`);
+    setSaveStatus("Campaña guardada: respuesta confirmada por la API.");
+    } catch (e) { setSaveStatus(e instanceof Error ? e.message : "No se pudo guardar"); }
   }
 
   function addBenefit() {
@@ -76,7 +88,7 @@ export default function WizardPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-3xl mx-auto space-y-6"><div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-wider text-indigo-600">Estudio de campañas · Publicidad 360</p><h1 className="mt-2 text-2xl font-extrabold text-slate-900">Crear una campaña comercial</h1><p className="mt-2 text-sm text-slate-500">Prepara un borrador para revisión. No implica publicación ni envíos.</p></div>{error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}{saveStatus && <p role="status" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">{saveStatus}</p>}
       {/* Progress */}
       <div className="flex gap-1 mb-8">
         {["objective", "network", "product", "tone", "result"].map((s, i) => (
