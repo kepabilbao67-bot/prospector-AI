@@ -18,7 +18,8 @@ export async function verifySession(token:string|null|undefined):Promise<Session
  const parts=token.split(".");if(parts.length!==2)return null;
  try{
   const [data,signature]=parts;
-  const valid=await crypto.subtle.verify("HMAC",await key(secret),decode(signature),encoder.encode(data));
+  const signatureBytes = Uint8Array.from(decode(signature));
+  const valid=await crypto.subtle.verify("HMAC",await key(secret),signatureBytes,encoder.encode(data));
   if(!valid)return null;
   const value:unknown=JSON.parse(new TextDecoder().decode(decode(data)));
   if(!value||typeof value!=="object")return null;
