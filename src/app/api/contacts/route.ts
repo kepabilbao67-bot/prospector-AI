@@ -1,9 +1,9 @@
 import {NextRequest,NextResponse} from "next/server";
 import prisma from "@/lib/prisma";
 import {SESSION_COOKIE,verifySession} from "@/lib/session";
-function identity(request:NextRequest){return verifySession(request.cookies.get(SESSION_COOKIE)?.value)?.userId;}
+async function identity(request:NextRequest){return (await verifySession(request.cookies.get(SESSION_COOKIE)?.value))?.userId;}
 export async function GET(request:NextRequest){
- const userId=identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
+ const userId=await identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
  try {
   const {searchParams}=new URL(request.url);
   const network=searchParams.get("network"), status=searchParams.get("status"), search=searchParams.get("search");
@@ -16,7 +16,7 @@ export async function GET(request:NextRequest){
  }catch{return NextResponse.json({error:"CRM no disponible"},{status:503});}
 }
 export async function POST(request:NextRequest){
- const userId=identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
+ const userId=await identity(request);if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});
  let data:unknown;try{data=await request.json();}catch{return NextResponse.json({error:"JSON inválido"},{status:400});}
  if(!data||typeof data!=="object")return NextResponse.json({error:"Datos inválidos"},{status:400});
  const p=data as Record<string,unknown>;
