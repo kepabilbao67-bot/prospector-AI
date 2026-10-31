@@ -1,0 +1,4 @@
+import Link from "next/link";
+export default function AccessRequiredPage() {
+ return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6"><section className="max-w-lg rounded-2xl border border-amber-200 bg-white p-8 shadow-sm"><p className="text-xs font-bold uppercase tracking-wider text-amber-700">Prospector IA 360 · Seguridad</p><h1 className="mt-3 text-2xl font-bold text-slate-900">Acceso privado deshabilitado</h1><p className="mt-3 text-sm leading-relaxed text-slate-600">Esta rama de seguridad bloquea el acceso a datos y herramientas hasta implantar sesiones individuales verificadas y aislamiento de registros en servidor. No introduzcas claves aquí: todavía no existe inicio de sesión habilitado.</p><Link className="mt-6 inline-block text-sm font-semibold text-indigo-700" href="https://github.com/kepabilbao67-bot/prospector-AI">Ver proyecto</Link></section></main>;
+}
