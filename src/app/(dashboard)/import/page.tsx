@@ -12,28 +12,41 @@ export default function ImportPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => setCsvContent(ev.target?.result as string);
+    reader.onload = (ev) => {
+      setCsvContent(String(ev.target?.result || ""));
+      setParsed(null);
+      setImported(0);
+    };
     reader.readAsText(file);
   }
 
   async function parseCSV() {
+    try {
     const res = await fetch("/api/smart", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "parse_csv", csvContent }),
     });
-    setParsed(await res.json());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    if (!Array.isArray(result.contacts) || !Array.isArray(result.errors)) throw new Error("Invalid CSV response");
+    setParsed(result);
+    } catch {
+      setParsed(null);
+      alert("No se pudo analizar el CSV. Revisa el formato y vuelve a intentarlo.");
+    }
   }
 
   async function importContacts() {
     if (!parsed) return;
     setImporting(true);
+    setImported(0);
     let count = 0;
     let failed = 0;
     for (const contact of parsed.contacts) {
       try {
       const response = await fetch("/api/contacts", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName: contact.firstName || "Unknown", lastName: contact.lastName || "", email: contact.email || "", company: contact.company || "", jobTitle: contact.jobTitle || "", phone: contact.phone || "", notes: contact.notes || "", profileUrl: contact.profileUrl || "", network: contact.network || "other" }),
+        body: JSON.stringify({ firstName: contact.firstName || contact.company || "", lastName: contact.lastName || "", email: contact.email || "", company: contact.company || "", jobTitle: contact.jobTitle || "", phone: contact.phone || "", notes: contact.notes || "", profileUrl: contact.profileUrl || "", network: contact.network || "other" }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       count++;
@@ -63,7 +76,7 @@ export default function ImportPage() {
       {/* Textarea */}
       <div>
         <label className="text-xs font-medium text-gray-700 block mb-1.5">O pega tu CSV:</label>
-        <textarea value={csvContent} onChange={(e) => setCsvContent(e.target.value)} rows={5}
+        <textarea value={csvContent} onChange={(e) => { setCsvContent(e.target.value); setParsed(null); setImported(0); }} rows={5}
           placeholder="nombre,apellido,email,empresa,cargo,red&#10;Carlos,García,carlos@tech.com,TechCorp,CEO,linkedin"
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-gray-900" />
       </div>
