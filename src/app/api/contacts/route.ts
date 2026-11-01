@@ -41,10 +41,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    if (typeof body.firstName !== "string" || !body.firstName.trim()) {
+      return NextResponse.json({ error: "Contact name is required" }, { status: 400 });
+    }
     const newContact = {
-      id: `c${Date.now()}`,
       userId: "default-user",
-      firstName: body.firstName || "Unknown",
+      firstName: body.firstName.trim(),
       lastName: body.lastName || null,
       email: body.email || null,
       phone: body.phone || null,
@@ -56,8 +58,6 @@ export async function POST(request: NextRequest) {
       score: 0,
       tags: JSON.stringify(body.tags || []),
       profileUrl: body.profileUrl || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     const prisma = (await import("@/lib/prisma")).default;
