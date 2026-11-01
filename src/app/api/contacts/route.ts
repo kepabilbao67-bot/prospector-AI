@@ -57,11 +57,12 @@ export async function POST(request: NextRequest) {
       catch { return NextResponse.json({ error: "Invalid profile URL" }, { status: 400 }); }
     }
     if (body.tags !== undefined && (!Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== "string"))) return NextResponse.json({ error: "Invalid tags" }, { status: 400 });
+    const normalizedEmail = email.toLowerCase();
     const newContact = {
       userId: "default-user",
       firstName: body.firstName.trim(),
       lastName: body.lastName || null,
-      email: email || null,
+      email: normalizedEmail || null,
       phone: body.phone || null,
       notes: body.notes || null,
       company: body.company || null,
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     const prisma = (await import("@/lib/prisma")).default;
     // Avoid duplicate prospects within the same CRM owner.
     const duplicateKeys = [
-      ...(email ? [{ email }] : []),
+      ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
       ...(profileUrl ? [{ profileUrl }] : []),
     ];
     if (duplicateKeys.length > 0) {
