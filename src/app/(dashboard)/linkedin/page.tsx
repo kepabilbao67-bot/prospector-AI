@@ -1,0 +1,37 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+export default function LinkedInProspectingPage() {
+  const [sector, setSector] = useState("administradores de fincas");
+  const [location, setLocation] = useState("Bizkaia");
+  const query = [sector.trim(), location.trim()].filter(Boolean).join(" ");
+  const searchUrl = "https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(query);
+  const peopleUrl = "https://www.linkedin.com/search/results/people/?keywords=" + encodeURIComponent(query);
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900">Prospección en LinkedIn</h1>
+        <p className="mt-2 text-sm text-gray-600">Busca empresas y responsables comerciales en LinkedIn. La búsqueda se abre en LinkedIn; esta pantalla no extrae perfiles ni envía mensajes automáticamente.</p>
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+        <label className="block text-sm font-medium">Sector o tipo de cliente
+          <input className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={sector} onChange={e => setSector(e.target.value)} placeholder="Ej. administradores de fincas" />
+        </label>
+        <label className="block text-sm font-medium">Zona
+          <input className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={location} onChange={e => setLocation(e.target.value)} placeholder="Ej. Bilbao, Bizkaia" />
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <a href={searchUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-medium text-white">Buscar empresas en LinkedIn</a>
+          <a href={peopleUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-blue-700 px-4 py-2.5 text-sm font-medium text-blue-700">Buscar responsables</a>
+        </div>
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+        <h2 className="font-semibold">Guardar oportunidades en Prospecto IA</h2>
+        <p className="text-sm text-gray-600">Cuando encuentres una empresa, guarda su nombre, responsable y enlace de LinkedIn en Contactos. Si tienes un CSV obtenido legítimamente, utiliza Importar. No se sincroniza tu cuenta de LinkedIn automáticamente.</p>
+        <div className="flex gap-4 text-sm font-medium text-blue-700"><Link href="/contacts">Abrir CRM</Link><Link href="/import">Importar CSV</Link></div>
+      </div>
+    </div>
+  );
+}
