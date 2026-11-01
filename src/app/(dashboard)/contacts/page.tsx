@@ -77,11 +77,17 @@ export default function ContactsPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
       });
+      if (response.status === 409) {
+        alert("Este contacto ya existe en el CRM. No se ha duplicado.");
+        return;
+      }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const created = await response.json();
+      if (!created || typeof created.id !== "string") throw new Error("Missing saved contact ID");
       setShowAdd(false);
       await loadContacts();
     } catch {
-      alert("No se ha podido guardar el contacto. Comprueba la conexión e inténtalo de nuevo.");
+      alert("No se ha podido confirmar el registro. Comprueba la conexión e inténtalo de nuevo.");
     }
   }
 
