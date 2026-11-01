@@ -32,15 +32,17 @@ const stepLabels: Record<string, string> = {
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   async function loadCampaigns() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/campaigns");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCampaigns(data.campaigns || []);
-    } catch { setCampaigns([]); }
+    } catch { setLoadError(true); }
     setLoading(false);
   }
 
@@ -69,11 +71,12 @@ export default function CampaignsPage() {
         </Link>
       </div>
 
+      {loadError && !loading && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">No se pudieron cargar las campañas. No significa que se hayan borrado. <button type="button" onClick={loadCampaigns} className="ml-2 underline">Reintentar</button></div>}
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
         </div>
-      ) : campaigns.length === 0 ? (
+      ) : loadError ? null : campaigns.length === 0 ? (
         <div className="text-center py-16 border border-gray-200 rounded-lg">
           <p className="text-sm text-gray-500 mb-3">No tienes campañas todavía</p>
           <Link href="/wizard" className="text-sm text-blue-600 font-medium">Crear una con el asistente IA</Link>
