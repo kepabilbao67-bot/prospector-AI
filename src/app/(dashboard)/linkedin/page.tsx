@@ -6,6 +6,8 @@ import Link from "next/link";
 export default function LinkedInProspectingPage() {
   const [sector, setSector] = useState("administradores de fincas");
   const [location, setLocation] = useState("Bizkaia");
+  const [municipality, setMunicipality] = useState("Toda Bizkaia");
+  const [keyword, setKeyword] = useState("");
   const [lead, setLead] = useState({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState("");
@@ -21,7 +23,10 @@ export default function LinkedInProspectingPage() {
     } catch { setResult("No se pudo guardar el contacto. No se ha confirmado el registro."); }
     finally { setSaving(false); }
   }
-  const query = [sector.trim(), location.trim()].filter(Boolean).join(" ");
+  const zone = municipality === "Toda Bizkaia" ? location.trim() : `${municipality} ${location.trim()}`;
+  const query = [sector.trim(), keyword.trim(), zone].filter(Boolean).join(" ");
+  const googleQuery = [sector.trim(), keyword.trim(), zone, "-site:linkedin.com"].filter(Boolean).join(" ");
+  const googleUrl = "https://www.google.com/search?q=" + encodeURIComponent(googleQuery);
   const searchUrl = "https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(query);
   const peopleUrl = "https://www.linkedin.com/search/results/people/?keywords=" + encodeURIComponent(query);
   return (
@@ -47,7 +52,17 @@ export default function LinkedInProspectingPage() {
         <label className="block text-sm font-medium">Zona
           <input className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={location} onChange={e => setLocation(e.target.value)} placeholder="Ej. Bilbao, Bizkaia" />
         </label>
+        <label className="block text-sm font-medium">Municipio
+          <select className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={municipality} onChange={e => setMunicipality(e.target.value)}>
+            {["Toda Bizkaia", "Bilbao", "Barakaldo", "Getxo", "Portugalete", "Santurtzi", "Basauri", "Leioa", "Durango", "Gernika-Lumo", "Sestao", "Erandio"].map(city => <option key={city}>{city}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-medium">Palabras clave adicionales
+          <input className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="Ej. comunidades de propietarios, mantenimiento, seguros" />
+        </label>
+        <p className="text-xs text-gray-500">Estas opciones preparan búsquedas externas; los resultados y los filtros finales dependen de LinkedIn o Google.</p>
         <div className="flex flex-wrap gap-3">
+          <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white">Buscar múltiples empresas en Google</a>
           <a href={searchUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-medium text-white">Buscar empresas en LinkedIn</a>
           <a href={peopleUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-blue-700 px-4 py-2.5 text-sm font-medium text-blue-700">Buscar responsables</a>
         </div>
