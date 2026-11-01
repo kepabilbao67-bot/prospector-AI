@@ -6,6 +6,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const network = searchParams.get("network");
     const status = searchParams.get("status");
+    const product = searchParams.get("product");
+    const allowedProducts = ["Fincas 360", "Llamadas 360", "Electricista 360", "Autónomo 360"];
+    if (product && product !== "all" && !allowedProducts.includes(product)) return NextResponse.json({ error: "Invalid product filter" }, { status: 400 });
     const search = searchParams.get("search")?.trim();
     const requestedPage = Number(searchParams.get("page") || "1");
     const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 100000) : 1;
@@ -16,6 +19,7 @@ export async function GET(request: NextRequest) {
       userId: "default-user",
       ...(network && network !== "all" ? { network } : {}),
       ...(status && status !== "all" ? { status } : {}),
+      ...(product && product !== "all" ? { tags: { contains: JSON.stringify(product) } } : {}),
       ...(search ? { OR: [
         { firstName: { contains: search } },
         { lastName: { contains: search } },
