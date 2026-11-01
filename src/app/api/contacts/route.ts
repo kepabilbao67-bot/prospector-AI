@@ -74,6 +74,18 @@ export async function POST(request: NextRequest) {
     };
 
     const prisma = (await import("@/lib/prisma")).default;
+    // Avoid duplicate prospects within the same CRM owner.
+    const duplicateKeys = [
+      ...(email ? [{ email }] : []),
+      ...(profileUrl ? [{ profileUrl }] : []),
+    ];
+    if (duplicateKeys.length > 0) {
+      const existing = await prisma.contact.findFirst({
+        where: { userId: newContact.userId, OR: duplicateKeys },
+        select: { id: true },
+      });
+      if (existing) return NextResponse.json({ error: "Contact already exists", contactId: existing.id }, { status: 409 });
+    }
     const contact = await prisma.contact.create({ data: newContact as never });
     return NextResponse.json(contact, { status: 201 });
   } catch (error) {
