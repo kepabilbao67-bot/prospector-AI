@@ -15,6 +15,16 @@ export default function LinkedInProspectingPage() {
         <h1 className="text-xl font-semibold text-gray-900">Prospección en LinkedIn</h1>
         <p className="mt-2 text-sm text-gray-600">Busca empresas y responsables comerciales en LinkedIn. La búsqueda se abre en LinkedIn; esta pantalla no extrae perfiles ni envía mensajes automáticamente.</p>
       </div>
+      <div className="flex flex-wrap gap-2" aria-label="Búsquedas comerciales rápidas">
+        {[
+          { label: "Fincas 360", sector: "administradores de fincas" },
+          { label: "Llamadas 360", sector: "clínicas y empresas de servicios" },
+          { label: "Electricista 360", sector: "instaladores eléctricos" },
+          { label: "Autónomo 360", sector: "asesorías y gestorías" },
+        ].map(item => (
+          <button key={item.label} type="button" onClick={() => setSector(item.sector)} className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm hover:border-blue-600">{item.label}</button>
+        ))}
+      </div>
       <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
         <label className="block text-sm font-medium">Sector o tipo de cliente
           <input className="mt-1 w-full rounded-lg border border-gray-300 p-2.5" value={sector} onChange={e => setSector(e.target.value)} placeholder="Ej. administradores de fincas" />
