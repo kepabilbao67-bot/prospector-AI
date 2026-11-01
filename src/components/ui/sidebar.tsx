@@ -16,6 +16,7 @@ const navigation = [
   { name: "Productos", href: "/products", icon: "package" },
   { name: "Ingresos", href: "/revenue", icon: "dollar" },
   { name: "Templates", href: "/templates", icon: "file-text" },
+  { name: "Documentos 360", href: "/documentos", icon: "file-text" },
   { name: "Importar", href: "/import", icon: "upload" },
   { name: "Contenido", href: "/content", icon: "edit" },
   { name: "Competencia", href: "/spy", icon: "eye" },
