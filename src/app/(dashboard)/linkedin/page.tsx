@@ -12,15 +12,19 @@ export default function LinkedInProspectingPage() {
   const [lead, setLead] = useState({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState("");
+  const [savedContactId, setSavedContactId] = useState("");
   async function saveLead(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!lead.firstName.trim() && !lead.company.trim()) return;
-    setSaving(true); setResult("");
+    setSaving(true); setResult(""); setSavedContactId("");
     try {
       const response = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...lead, firstName: lead.firstName.trim() || lead.company.trim(), network: "linkedin", tags: ["prospeccion", product, sector.trim(), location.trim()].filter(Boolean) }) });
       if (response.status === 409) { setResult("Este contacto ya existe en el CRM. No se ha duplicado."); return; }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      setResult("Contacto guardado. Compruébalo en el CRM.");
+      const created = await response.json();
+      if (!created || typeof created.id !== "string") throw new Error("Missing contact ID");
+      setSavedContactId(created.id);
+      setResult("Contacto registrado. Abre el CRM para comprobar que aparece.");
       setLead({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
     } catch { setResult("No se pudo guardar el contacto. No se ha confirmado el registro."); }
     finally { setSaving(false); }
