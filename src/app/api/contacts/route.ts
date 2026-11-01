@@ -49,11 +49,19 @@ export async function POST(request: NextRequest) {
     if (typeof body.firstName !== "string" || !body.firstName.trim()) {
       return NextResponse.json({ error: "Contact name is required" }, { status: 400 });
     }
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+    const profileUrl = typeof body.profileUrl === "string" ? body.profileUrl.trim() : "";
+    if (profileUrl) {
+      try { const parsed = new URL(profileUrl); if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Invalid protocol"); }
+      catch { return NextResponse.json({ error: "Invalid profile URL" }, { status: 400 }); }
+    }
+    if (body.tags !== undefined && (!Array.isArray(body.tags) || body.tags.some((tag: unknown) => typeof tag !== "string"))) return NextResponse.json({ error: "Invalid tags" }, { status: 400 });
     const newContact = {
       userId: "default-user",
       firstName: body.firstName.trim(),
       lastName: body.lastName || null,
-      email: body.email || null,
+      email: email || null,
       phone: body.phone || null,
       notes: body.notes || null,
       company: body.company || null,
@@ -62,7 +70,7 @@ export async function POST(request: NextRequest) {
       status: "new",
       score: 0,
       tags: JSON.stringify(body.tags || []),
-      profileUrl: body.profileUrl || null,
+      profileUrl: profileUrl || null,
     };
 
     const prisma = (await import("@/lib/prisma")).default;
