@@ -47,6 +47,8 @@ export async function POST(request: NextRequest) {
       firstName: body.firstName || "Unknown",
       lastName: body.lastName || null,
       email: body.email || null,
+      phone: body.phone || null,
+      notes: body.notes || null,
       company: body.company || null,
       jobTitle: body.jobTitle || null,
       network: body.network || "other",
