@@ -42,6 +42,7 @@ export default function ContactsPage() {
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.search) params.set("search", filters.search);
       const res = await fetch(`/api/contacts?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setContacts(data.contacts || []);
       setTotal(data.total || 0);
@@ -62,12 +63,16 @@ export default function ContactsPage() {
   }
 
   async function addContact(formData: FormData) {
-    await fetch("/api/contacts", {
+    const response = await fetch("/api/contacts", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
     });
+    if (!response.ok) {
+      alert("No se ha guardado el contacto. Comprueba la conexión y vuelve a intentarlo.");
+      return;
+    }
     setShowAdd(false);
-    loadContacts();
+    await loadContacts();
   }
 
   return (
