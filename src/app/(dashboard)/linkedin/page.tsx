@@ -6,6 +6,21 @@ import Link from "next/link";
 export default function LinkedInProspectingPage() {
   const [sector, setSector] = useState("administradores de fincas");
   const [location, setLocation] = useState("Bizkaia");
+  const [lead, setLead] = useState({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState("");
+  async function saveLead(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!lead.firstName.trim() && !lead.company.trim()) return;
+    setSaving(true); setResult("");
+    try {
+      const response = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...lead, firstName: lead.firstName.trim() || lead.company.trim(), network: "linkedin", tags: ["prospeccion", sector.trim(), location.trim()].filter(Boolean) }) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setResult("Contacto guardado. Compruébalo en el CRM.");
+      setLead({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
+    } catch { setResult("No se pudo guardar el contacto. No se ha confirmado el registro."); }
+    finally { setSaving(false); }
+  }
   const query = [sector.trim(), location.trim()].filter(Boolean).join(" ");
   const searchUrl = "https://www.linkedin.com/search/results/companies/?keywords=" + encodeURIComponent(query);
   const peopleUrl = "https://www.linkedin.com/search/results/people/?keywords=" + encodeURIComponent(query);
@@ -37,6 +52,15 @@ export default function LinkedInProspectingPage() {
           <a href={peopleUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-blue-700 px-4 py-2.5 text-sm font-medium text-blue-700">Buscar responsables</a>
         </div>
       </div>
+      <form onSubmit={saveLead} className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
+        <h2 className="font-semibold">Registrar oportunidad en el CRM</h2>
+        <p className="text-sm text-gray-600">Después de localizar una empresa, copia aquí sus datos públicos. Se guarda como contacto de LinkedIn.</p>
+        {([["firstName", "Responsable o nombre de contacto"], ["company", "Empresa"], ["jobTitle", "Cargo"], ["email", "Correo"], ["profileUrl", "URL de LinkedIn"], ["notes", "Notas y producto 360 recomendado"]] as const).map(([key, label]) => (
+          <label key={key} className="block text-sm">{label}<input value={lead[key]} onChange={e => setLead(v => ({ ...v, [key]: e.target.value }))} type={key === "email" ? "email" : key === "profileUrl" ? "url" : "text"} className="mt-1 w-full rounded-lg border border-gray-300 p-2" /></label>
+        ))}
+        <button type="submit" disabled={saving || (!lead.firstName.trim() && !lead.company.trim())} className="rounded-lg bg-indigo-700 px-4 py-2 text-white disabled:opacity-40">{saving ? "Guardando..." : "Guardar en CRM"}</button>
+        {result && <p role="status" className="text-sm">{result}</p>}
+      </form>
       <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
         <h2 className="font-semibold">Guardar oportunidades en Prospecto IA</h2>
         <p className="text-sm text-gray-600">Cuando encuentres una empresa, guarda su nombre, responsable y enlace de LinkedIn en Contactos. Si tienes un CSV obtenido legítimamente, utiliza Importar. No se sincroniza tu cuenta de LinkedIn automáticamente.</p>
