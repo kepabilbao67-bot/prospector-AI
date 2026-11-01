@@ -28,6 +28,8 @@ const statusLabels: Record<string, string> = {
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ network: "all", status: "all", search: "" });
@@ -40,6 +42,7 @@ export default function ContactsPage() {
     setLoadError(null);
     try {
       const params = new URLSearchParams();
+      params.set("page", String(page));
       if (filters.network !== "all") params.set("network", filters.network);
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.search) params.set("search", filters.search);
@@ -48,13 +51,14 @@ export default function ContactsPage() {
       const data = await res.json();
       setContacts(data.contacts || []);
       setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch {
       setLoadError("No se han podido cargar los contactos. No significa que se hayan borrado.");
     }
     setLoading(false);
   }
 
-  useEffect(() => { loadContacts(); }, [filters]);
+  useEffect(() => { loadContacts(); }, [filters, page]);
 
   async function scoreContact(contact: Contact) {
     try {
@@ -98,10 +102,10 @@ export default function ContactsPage() {
       <div className="space-y-2">
         <input type="text" placeholder="Buscar por nombre, empresa..."
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
-          value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
+          value={filters.search} onChange={(e) => { setPage(1); setFilters({ ...filters, search: e.target.value }); }} />
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {["all", "linkedin", "fiverr", "twitter", "instagram", "email"].map((n) => (
-            <button key={n} onClick={() => setFilters({ ...filters, network: n })}
+            <button key={n} onClick={() => { setPage(1); setFilters({ ...filters, network: n }); }}
               className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filters.network === n ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
               {n === "all" ? "Todos" : networkLabels[n]}
             </button>
@@ -112,7 +116,7 @@ export default function ContactsPage() {
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>
-      ) : contacts.length === 0 ? (
+      ) : loadError ? null : contacts.length === 0 ? (
         <div className="text-center py-16 border border-gray-200 rounded-lg">
           <p className="text-sm text-gray-500">No se encontraron contactos</p>
         </div>
@@ -170,6 +174,14 @@ export default function ContactsPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {!loading && !loadError && totalPages > 1 && (
+        <nav aria-label="Paginación de contactos" className="flex items-center justify-center gap-4 py-3 text-sm">
+          <button type="button" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="disabled:opacity-40 underline">Anterior</button>
+          <span>Página {page} de {totalPages} · {total} contactos</span>
+          <button type="button" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="disabled:opacity-40 underline">Siguiente</button>
+        </nav>
       )}
 
       {/* Contact Detail */}
