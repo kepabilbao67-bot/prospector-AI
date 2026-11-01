@@ -5,6 +5,7 @@ import Link from "next/link";
 
 export default function LinkedInProspectingPage() {
   const [sector, setSector] = useState("administradores de fincas");
+  const [product, setProduct] = useState("Fincas 360");
   const [location, setLocation] = useState("Bizkaia");
   const [municipality, setMunicipality] = useState("Toda Bizkaia");
   const [keyword, setKeyword] = useState("");
@@ -16,7 +17,8 @@ export default function LinkedInProspectingPage() {
     if (!lead.firstName.trim() && !lead.company.trim()) return;
     setSaving(true); setResult("");
     try {
-      const response = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...lead, firstName: lead.firstName.trim() || lead.company.trim(), network: "linkedin", tags: ["prospeccion", sector.trim(), location.trim()].filter(Boolean) }) });
+      const response = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...lead, firstName: lead.firstName.trim() || lead.company.trim(), network: "linkedin", tags: ["prospeccion", product, sector.trim(), location.trim()].filter(Boolean) }) });
+      if (response.status === 409) { setResult("Este contacto ya existe en el CRM. No se ha duplicado."); return; }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setResult("Contacto guardado. Compruébalo en el CRM.");
       setLead({ firstName: "", company: "", jobTitle: "", email: "", profileUrl: "", notes: "" });
@@ -42,7 +44,7 @@ export default function LinkedInProspectingPage() {
           { label: "Electricista 360", sector: "instaladores eléctricos" },
           { label: "Autónomo 360", sector: "asesorías y gestorías" },
         ].map(item => (
-          <button key={item.label} type="button" onClick={() => setSector(item.sector)} className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm hover:border-blue-600">{item.label}</button>
+          <button key={item.label} type="button" onClick={() => { setSector(item.sector); setProduct(item.label); }} className="rounded-full border border-gray-300 bg-white px-3 py-2 text-sm hover:border-blue-600">{item.label}</button>
         ))}
       </div>
       <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
