@@ -37,6 +37,7 @@ export default function CampaignsPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/campaigns");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setCampaigns(data.campaigns || []);
     } catch { setCampaigns([]); }
@@ -48,9 +49,12 @@ export default function CampaignsPage() {
   async function toggleStatus(campaign: Campaign) {
     const newStatus = campaign.status === "active" ? "paused" : "active";
     try {
-      await fetch(`/api/campaigns/${campaign.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
-    } catch { /* fallback */ }
-    setCampaigns(campaigns.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
+      const response = await fetch(`/api/campaigns/${campaign.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await loadCampaigns();
+    } catch {
+      alert("No se pudo actualizar la campaña. Su estado no se ha cambiado.");
+    }
   }
 
   return (
