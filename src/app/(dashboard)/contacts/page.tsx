@@ -32,7 +32,7 @@ export default function ContactsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ network: "all", status: "all", search: "" });
+  const [filters, setFilters] = useState({ network: "all", status: "all", product: "all", search: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Contact | null>(null);
   const [aiScore, setAiScore] = useState<{ score: number; reasons: string[]; recommendation: string } | null>(null);
@@ -45,6 +45,7 @@ export default function ContactsPage() {
       params.set("page", String(page));
       if (filters.network !== "all") params.set("network", filters.network);
       if (filters.status !== "all") params.set("status", filters.status);
+      if (filters.product !== "all") params.set("product", filters.product);
       if (filters.search) params.set("search", filters.search);
       const res = await fetch(`/api/contacts?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -112,6 +113,12 @@ export default function ContactsPage() {
           ))}
         </div>
       </div>
+
+      <label className="block text-sm font-medium text-gray-700">Producto comercial
+        <select value={filters.product} onChange={e => { setPage(1); setFilters(prev => ({ ...prev, product: e.target.value })); }} className="mt-1 w-full rounded-lg border border-gray-200 bg-white p-2.5 text-sm">
+          {["all", "Fincas 360", "Llamadas 360", "Electricista 360", "Autónomo 360"].map(product => <option key={product} value={product}>{product === "all" ? "Todos los productos" : product}</option>)}
+        </select>
+      </label>
 
       <div className="flex flex-wrap gap-2" aria-label="Filtrar contactos por estado">
         {["all", "new", "contacted", "replied", "qualified", "converted", "lost"].map(status => (
