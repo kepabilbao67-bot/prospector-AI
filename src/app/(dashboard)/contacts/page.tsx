@@ -67,16 +67,17 @@ export default function ContactsPage() {
   }
 
   async function addContact(formData: FormData) {
-    const response = await fetch("/api/contacts", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
-    });
-    if (!response.ok) {
-      alert("No se ha guardado el contacto. Comprueba la conexión y vuelve a intentarlo.");
-      return;
+    try {
+      const response = await fetch("/api/contacts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setShowAdd(false);
+      await loadContacts();
+    } catch {
+      alert("No se ha podido guardar el contacto. Comprueba la conexión e inténtalo de nuevo.");
     }
-    setShowAdd(false);
-    await loadContacts();
   }
 
   return (
