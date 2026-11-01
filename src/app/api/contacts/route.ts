@@ -1,39 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 
 
-async function getContacts() {
-  const prisma = (await import("@/lib/prisma")).default;
-  return prisma.contact.findMany({
-    where: { userId: "default-user" },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const network = searchParams.get("network");
     const status = searchParams.get("status");
-    const search = searchParams.get("search");
+    const search = searchParams.get("search")?.trim();
+    const requestedPage = Number(searchParams.get("page") || "1");
+    const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 100000) : 1;
+    const pageSize = 50;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contacts: any[] = await getContacts();
-
-    if (network && network !== "all") contacts = contacts.filter((c: any) => c.network === network);
-    if (status && status !== "all") contacts = contacts.filter((c: any) => c.status === status);
-    if (search) {
-      const s = search.toLowerCase();
-      contacts = contacts.filter((c: any) =>
-        c.firstName.toLowerCase().includes(s) ||
-        (c.lastName || "").toLowerCase().includes(s) ||
-        (c.company || "").toLowerCase().includes(s)
-      );
-    }
-
-    return NextResponse.json({ contacts, total: contacts.length, page: 1, totalPages: 1 });
+    // Keep filters in the database so results beyond the first 50 are searchable.
+    const where = {
+      userId: "default-user",
+      ...(network && network !== "all" ? { network } : {}),
+      ...(status && status !== "all" ? { status } : {}),
+      ...(search ? { OR: [
+        { firstName: { contains: search } },
+        { lastName: { contains: search } },
+        { company: { contains: search } },
+      ] } : {}),
+    };
+    const prisma = (await import("@/lib/prisma")).default;
+    const [contacts, total] = await prisma.$transaction([
+      prisma.contact.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.contact.count({ where }),
+    ]);
+    return NextResponse.json({ contacts, total, page, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error loading contacts:", error);
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 }
