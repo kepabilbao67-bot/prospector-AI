@@ -8,8 +8,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const campaign = await prisma.campaign.findUnique({
-      where: { id },
+    const campaign = await prisma.campaign.findFirst({
+      where: { id, userId: "default-user" },
       include: {
         steps: { orderBy: { order: "asc" }, include: { template: true } },
         campaignContacts: { include: { contact: true } },
@@ -36,8 +36,10 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
+    const existing = await prisma.campaign.findFirst({ where: { id, userId: "default-user" } });
+    if (!existing) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     const campaign = await prisma.campaign.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         name: body.name,
         description: body.description,
@@ -61,7 +63,9 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.campaign.delete({ where: { id } });
+    const existing = await prisma.campaign.findFirst({ where: { id, userId: "default-user" } });
+    if (!existing) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+    await prisma.campaign.delete({ where: { id: existing.id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting campaign:", error);
