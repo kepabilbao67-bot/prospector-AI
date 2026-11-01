@@ -104,13 +104,22 @@ export default function ContactsPage() {
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
           value={filters.search} onChange={(e) => { setPage(1); setFilters({ ...filters, search: e.target.value }); }} />
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {["all", "linkedin", "fiverr", "twitter", "instagram", "email"].map((n) => (
+          {["all", "linkedin", "fiverr", "twitter", "instagram", "email", "whatsapp", "facebook", "other"].map((n) => (
             <button key={n} onClick={() => { setPage(1); setFilters({ ...filters, network: n }); }}
               className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filters.network === n ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
               {n === "all" ? "Todos" : networkLabels[n]}
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2" aria-label="Filtrar contactos por estado">
+        {["all", "new", "contacted", "replied", "qualified", "converted", "lost"].map(status => (
+          <button key={status} type="button" onClick={() => { setPage(1); setFilters(prev => ({ ...prev, status })); }}
+            className={`rounded-md px-3 py-1.5 text-xs ${filters.status === status ? "bg-indigo-700 text-white" : "bg-gray-100 text-gray-700"}`}>
+            {status === "all" ? "Todos los estados" : statusLabels[status]}
+          </button>
+        ))}
       </div>
 
       {/* Table */}
