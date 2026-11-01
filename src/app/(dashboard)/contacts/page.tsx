@@ -28,6 +28,7 @@ const statusLabels: Record<string, string> = {
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ network: "all", status: "all", search: "" });
   const [showAdd, setShowAdd] = useState(false);
@@ -36,6 +37,7 @@ export default function ContactsPage() {
 
   async function loadContacts() {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (filters.network !== "all") params.set("network", filters.network);
@@ -46,7 +48,9 @@ export default function ContactsPage() {
       const data = await res.json();
       setContacts(data.contacts || []);
       setTotal(data.total || 0);
-    } catch { setContacts([]); }
+    } catch {
+      setLoadError("No se han podido cargar los contactos. No significa que se hayan borrado.");
+    }
     setLoading(false);
   }
 
@@ -86,6 +90,8 @@ export default function ContactsPage() {
           Añadir contacto
         </button>
       </div>
+
+      {loadError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{loadError}</div>}
 
       {/* Search + Filters */}
       <div className="space-y-2">
