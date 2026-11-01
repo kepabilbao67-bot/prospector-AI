@@ -11,6 +11,7 @@ const navigation = [
   { name: "Agenda", href: "/calendar", icon: "calendar" },
   { name: "Pipeline", href: "/pipeline", icon: "bar-chart" },
   { name: "Contactos", href: "/contacts", icon: "users" },
+  { name: "LinkedIn", href: "/linkedin", icon: "users" },
   { name: "Campañas", href: "/campaigns", icon: "send" },
   { name: "Automatizaciones", href: "/automations", icon: "cpu" },
   { name: "Productos", href: "/products", icon: "package" },
