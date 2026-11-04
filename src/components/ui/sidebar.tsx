@@ -18,6 +18,7 @@ const navigation = [
   { name: "Templates", href: "/templates", icon: "file-text" },
   { name: "Importar", href: "/import", icon: "upload" },
   { name: "Contenido", href: "/content", icon: "edit" },
+  { name: "Marketing gratis", href: "/marketing-gratis", icon: "edit" },
   { name: "Competencia", href: "/spy", icon: "eye" },
   { name: "Referidos", href: "/referrals", icon: "gift" },
   { name: "Warm-up", href: "/warmup", icon: "shield" },
