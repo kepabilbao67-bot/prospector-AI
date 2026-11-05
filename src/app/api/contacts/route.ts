@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import prisma from "@/lib/prisma";
+import {readAirtableContacts,createAirtableContact} from "@/lib/airtable-crm";
 import {SESSION_COOKIE,verifySession} from "@/lib/session";
 async function identity(request:NextRequest){return (await verifySession(request.cookies.get(SESSION_COOKIE)?.value))?.userId;}
 export async function GET(request:NextRequest){
@@ -7,6 +8,8 @@ export async function GET(request:NextRequest){
  try {
   const {searchParams}=new URL(request.url);
   const network=searchParams.get("network"), status=searchParams.get("status"), search=searchParams.get("search");
+  const airtable=await readAirtableContacts(userId,{network,status,search});
+  if(airtable)return NextResponse.json(airtable,{headers:{"Cache-Control":"private, no-store"}});
   const contacts=await prisma.contact.findMany({
    where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{}),
     ...(search?{OR:[{firstName:{contains:search}},{lastName:{contains:search}},{company:{contains:search}}]}:{})},
@@ -23,6 +26,13 @@ export async function POST(request:NextRequest){
  if(typeof p.firstName!=="string"||!p.firstName.trim()||p.firstName.length>120)return NextResponse.json({error:"Nombre obligatorio"},{status:400});
  const text=(key:string)=>typeof p[key]==="string"?(p[key] as string).slice(0,500):null;
  try{
+  const airtable=await createAirtableContact(userId,{
+   firstName:p.firstName.trim(),lastName:text("lastName"),email:text("email"),
+   company:text("company"),jobTitle:text("jobTitle"),network:text("network"),
+  });
+  if(airtable)return airtable.duplicate
+   ? NextResponse.json({error:"El contacto ya existe",contact:airtable.contact},{status:409})
+   : NextResponse.json(airtable.contact,{status:201});
   const contact=await prisma.contact.create({data:{
    userId,firstName:p.firstName.trim(),lastName:text("lastName"),email:text("email"),
    company:text("company"),jobTitle:text("jobTitle"),network:text("network")||"other",
