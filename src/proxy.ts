@@ -8,9 +8,9 @@ export async function proxy(request:NextRequest){
   if(path.startsWith("/api/"))return NextResponse.json({error:"Unauthorized"},{status:401});
   return NextResponse.redirect(new URL("/login",request.url));
  }
- // Keep all APIs denied except the explicitly audited CRM read API.
+ // Permit only independently authenticated, tenant-scoped CRM and campaigns endpoints.
  // Do not forward userId as a trusted request header; route reads signed cookie again.
- if(path.startsWith("/api/")&&path!=="/api/contacts")return NextResponse.json({error:"Endpoint pending tenant isolation"},{status:503});
+ if(path.startsWith("/api/")&&path!=="/api/contacts"&&path!=="/api/campaigns")return NextResponse.json({error:"Endpoint pending tenant isolation"},{status:503});
  return NextResponse.next();
 }
 export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/|sw.js).*)"]};
