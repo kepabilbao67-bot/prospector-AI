@@ -89,11 +89,18 @@ function mapRecord(record: AirtableRecord, userId: string) {
   const origin = typeof source === "object" && source !== null && "name" in source
     ? asText((source as { name: unknown }).name)
     : asText(source);
-  const network = normalize(origin) === "linkedin" ? "linkedin" : "other";
+  const originKey = normalize(origin);
+  const network = originKey === "linkedin" ? "linkedin" : originKey === "gmail" ? "email" : originKey === "whatsapp" ? "whatsapp" : "other";
   const pipeline = record.fields["Pipeline Lead"];
   const pipelineName = typeof pipeline === "object" && pipeline !== null && "name" in pipeline
     ? asText((pipeline as { name: unknown }).name)
     : asText(pipeline);
+  const stage = normalize(pipelineName);
+  // Map only explicitly defined CRM pipeline stages, without inventing replies.
+  const status = stage === "negociacion" ? "qualified"
+    : stage === "negocio rechazado" ? "lost"
+    : stage === "acuerdo cerrado" ? "converted"
+    : stage === "propuesta enviada" ? "contacted" : "new";
   return {
     id: record.id,
     userId,
@@ -103,7 +110,7 @@ function mapRecord(record: AirtableRecord, userId: string) {
     company: asText(record.fields[FIELD_COMPANY]) || null,
     jobTitle: null,
     network,
-    status: "new",
+    status,
     score: 0,
     tags: "[]",
     profileUrl: null,
