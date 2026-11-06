@@ -1,60 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CAMPAIGNS } from "@/lib/demo-data";
+import prisma from "@/lib/prisma";
+import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
-let inMemoryCampaigns = [...DEMO_CAMPAIGNS];
+async function sessionUserId(request: NextRequest): Promise<string | null> {
+  return (await verifySession(request.cookies.get(SESSION_COOKIE)?.value))?.userId ?? null;
+}
 
-async function getCampaigns() {
+export async function GET(request: NextRequest) {
+  const userId = await sessionUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const prisma = (await import("@/lib/prisma")).default;
     const campaigns = await prisma.campaign.findMany({
-      where: { userId: "default-user" },
+      where: { userId },
       include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
       orderBy: { createdAt: "desc" },
     });
-    if (campaigns.length > 0) return campaigns;
-  } catch { /* DB not available */ }
-  return inMemoryCampaigns;
-}
-
-export async function GET() {
-  try {
-    const campaigns = await getCampaigns();
-    return NextResponse.json({ campaigns });
+    return NextResponse.json({ campaigns }, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
-    return NextResponse.json({ campaigns: DEMO_CAMPAIGNS });
+    return NextResponse.json({ error: "Campañas no disponibles" }, { status: 503 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const campaign = {
-      id: `camp${Date.now()}`,
-      userId: "default-user",
-      name: body.name,
-      description: body.description || null,
-      network: body.network || "multi",
-      status: "draft",
-      settings: JSON.stringify(body.settings || { dailyLimit: 50 }),
-      stats: '{"sent":0,"replied":0,"converted":0}',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      steps: [],
-      campaignContacts: [],
-    };
+  const userId = await sessionUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    try {
-      const prisma = (await import("@/lib/prisma")).default;
-      const created = await prisma.campaign.create({
-        data: { userId: "default-user", name: body.name, description: body.description, network: body.network || "multi", status: "draft", settings: JSON.stringify(body.settings || {}) },
-      });
-      return NextResponse.json(created, { status: 201 });
-    } catch {
-      inMemoryCampaigns.unshift(campaign);
-      return NextResponse.json(campaign, { status: 201 });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  let input: unknown;
+  try { input = await request.json(); }
+  catch { return NextResponse.json({ error: "JSON inválido" }, { status: 400 }); }
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
+
+  const data = input as Record<string, unknown>;
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  const description = typeof data.description === "string" ? data.description.trim() : null;
+  const network = typeof data.network === "string" ? data.network : "multi";
+  const validNetworks = ["linkedin", "fiverr", "twitter", "instagram", "email", "multi"];
+  if (name.length < 1 || name.length > 160 || (description && description.length > 2000) ||
+      !validNetworks.includes(network))
+    return NextResponse.json({ error: "Datos de campaña inválidos" }, { status: 400 });
+
+  const settings = data.settings == null ? {} : data.settings;
+  if (typeof settings !== "object" || Array.isArray(settings) ||
+      JSON.stringify(settings).length > 10000)
+    return NextResponse.json({ error: "Configuración inválida" }, { status: 400 });
+
+  try {
+    const created = await prisma.campaign.create({
+      data: {
+        userId,
+        name,
+        description,
+        network,
+        status: "draft",
+        settings: JSON.stringify(settings),
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "No se pudo guardar la campaña" }, { status: 503 });
   }
 }
