@@ -233,6 +233,7 @@ export default function ContactsPage() {
           <div className="bg-white rounded-t-2xl md:rounded-xl p-5 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900">Nuevo contacto</h2>
+              {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
               <button onClick={() => setShowAdd(false)} className="text-gray-400 text-xl">×</button>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); addContact(new FormData(e.currentTarget)); }} className="space-y-3">
