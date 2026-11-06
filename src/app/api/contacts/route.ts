@@ -8,14 +8,17 @@ export async function GET(request:NextRequest){
  try {
   const {searchParams}=new URL(request.url);
   const network=searchParams.get("network"), status=searchParams.get("status"), search=searchParams.get("search");
-  const airtable=await readAirtableContacts(userId,{network,status,search});
+  const requestedPage=Number(searchParams.get("page")||"1");
+  const page=Number.isSafeInteger(requestedPage)&&requestedPage>0?Math.min(requestedPage,100000):1;
+  const airtable=await readAirtableContacts(userId,{network,status,search,page});
   if(airtable)return NextResponse.json(airtable,{headers:{"Cache-Control":"private, no-store"}});
   const contacts=await prisma.contact.findMany({
    where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{}),
     ...(search?{OR:[{firstName:{contains:search}},{lastName:{contains:search}},{company:{contains:search}}]}:{})},
-   orderBy:{createdAt:"desc"},take:50
+   orderBy:{createdAt:"desc"},skip:(page-1)*50,take:50
   });
-  return NextResponse.json({contacts,total:contacts.length,page:1,totalPages:1});
+  const total=await prisma.contact.count({where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{})}});
+  return NextResponse.json({contacts,total,page,totalPages:Math.max(1,Math.ceil(total/50))},{headers:{"Cache-Control":"private, no-store"}});
  }catch{return NextResponse.json({error:"CRM no disponible"},{status:503});}
 }
 export async function POST(request:NextRequest){
