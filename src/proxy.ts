@@ -10,7 +10,7 @@ export async function proxy(request:NextRequest){
  }
  // Permit only independently authenticated, tenant-scoped CRM and campaigns endpoints.
  // Do not forward userId as a trusted request header; route reads signed cookie again.
- if(path.startsWith("/api/")&&path!=="/api/contacts"&&path!=="/api/campaigns")return NextResponse.json({error:"Endpoint pending tenant isolation"},{status:503});
+ if(path.startsWith("/api/")&&path!=="/api/contacts"&&path!=="/api/campaigns"&&path!=="/api/contactos-personales")return NextResponse.json({error:"Endpoint pending tenant isolation"},{status:503});
  return NextResponse.next();
 }
 export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/|sw.js).*)"]};
