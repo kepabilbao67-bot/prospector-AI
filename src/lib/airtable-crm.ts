@@ -32,7 +32,9 @@ function configFor(userId: string): { token: string } | null {
   const ownerId = process.env.PROSPECTOR_AIRTABLE_OWNER_USER_ID;
   // Airtable's shared commercial CRM is NOT a multi-tenant data store.
   // Fail closed rather than reveal a different user's contact records.
-  if (!ownerId || userId !== ownerId) return null;
+  if (!ownerId && !token) return null;
+  if (!ownerId) throw new Error("Airtable CRM owner is not configured");
+  if (userId !== ownerId) return null;
   // Never silently fall back to another CRM if Airtable is assigned to this user.
   if (!token) throw new Error("Airtable CRM credentials are missing");
   return { token };
@@ -88,6 +90,10 @@ function mapRecord(record: AirtableRecord, userId: string) {
     ? asText((source as { name: unknown }).name)
     : asText(source);
   const network = normalize(origin) === "linkedin" ? "linkedin" : "other";
+  const pipeline = record.fields["Pipeline Lead"];
+  const pipelineName = typeof pipeline === "object" && pipeline !== null && "name" in pipeline
+    ? asText((pipeline as { name: unknown }).name)
+    : asText(pipeline);
   return {
     id: record.id,
     userId,
@@ -104,6 +110,7 @@ function mapRecord(record: AirtableRecord, userId: string) {
     createdAt: record.createdTime,
     updatedAt: record.createdTime,
     source: "airtable",
+    airtablePipeline: pipelineName || null,
   };
 }
 
@@ -113,7 +120,7 @@ function mapRecord(record: AirtableRecord, userId: string) {
  */
 export async function readAirtableContacts(
   userId: string,
-  filters: { search?: string | null; network?: string | null; status?: string | null },
+  filters: { search?: string | null; network?: string | null; status?: string | null; page?: number },
 ) {
   const cfg = configFor(userId);
   if (!cfg) return null;
@@ -126,7 +133,10 @@ export async function readAirtableContacts(
     (!filters.network || filters.network === "all" || filters.network === contact.network) &&
     (!filters.status || filters.status === "all" || filters.status === contact.status)
   );
-  return { contacts: filtered.slice(0, 50), total: filtered.length, page: 1, totalPages: Math.max(1, Math.ceil(filtered.length / 50)) };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 50));
+  const page = Number.isSafeInteger(filters.page) && (filters.page || 0) > 0 ? Math.min(filters.page!, totalPages) : 1;
+  const start = (page - 1) * 50;
+  return { contacts: filtered.slice(start, start + 50), total: filtered.length, page, totalPages };
 }
 
 export async function createAirtableContact(userId: string, input: ContactInput) {
