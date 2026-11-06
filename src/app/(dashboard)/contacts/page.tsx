@@ -29,23 +29,27 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [filters, setFilters] = useState({ network: "all", status: "all", search: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Contact | null>(null);
   const [aiScore, setAiScore] = useState<{ score: number; reasons: string[]; recommendation: string } | null>(null);
 
   async function loadContacts() {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
       const params = new URLSearchParams();
       if (filters.network !== "all") params.set("network", filters.network);
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.search) params.set("search", filters.search);
-      const res = await fetch(`/api/contacts?${params.toString()}`);
+      const res = await fetch(`/api/contacts?${params.toString()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("CRM no disponible (" + res.status + ")");
       const data = await res.json();
-      setContacts(data.contacts || []);
-      setTotal(data.total || 0);
-    } catch { setContacts([]); }
+      if (!Array.isArray(data.contacts)) throw new Error("Respuesta del CRM inválida");
+      setContacts(data.contacts);
+      setTotal(Number(data.total) || 0);
+    } catch (cause) { setContacts([]); setTotal(0); setError(cause instanceof Error ? cause.message : "Error de conexión"); }
     setLoading(false);
   }
 
@@ -62,12 +66,17 @@ export default function ContactsPage() {
   }
 
   async function addContact(formData: FormData) {
-    await fetch("/api/contacts", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
-    });
-    setShowAdd(false);
-    loadContacts();
+    setSaving(true); setError("");
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: formData.get("firstName"), lastName: formData.get("lastName"), email: formData.get("email"), company: formData.get("company"), jobTitle: formData.get("jobTitle"), network: formData.get("network"), profileUrl: formData.get("profileUrl") }),
+      });
+      if (!res.ok) throw new Error(res.status === 409 ? "El contacto ya existe en el CRM" : "No se pudo guardar el contacto (" + res.status + ")");
+      setShowAdd(false);
+      await loadContacts();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Error al guardar"); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -82,6 +91,7 @@ export default function ContactsPage() {
         </button>
       </div>
 
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {/* Search + Filters */}
       <div className="space-y-2">
         <input type="text" placeholder="Buscar por nombre, empresa..."
@@ -245,7 +255,7 @@ export default function ContactsPage() {
                 <option value="other">Otro</option>
               </select>
               <input name="profileUrl" placeholder="URL del perfil" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gray-900" />
-              <button type="submit" className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium">Guardar</button>
+              <button type="submit" disabled={saving} className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{saving ? "Guardando…" : "Guardar"}</button>
             </form>
           </div>
         </div>
