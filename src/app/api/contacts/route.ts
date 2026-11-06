@@ -17,7 +17,7 @@ export async function GET(request:NextRequest){
     ...(search?{OR:[{firstName:{contains:search}},{lastName:{contains:search}},{company:{contains:search}}]}:{})},
    orderBy:{createdAt:"desc"},skip:(page-1)*50,take:50
   });
-  const total=await prisma.contact.count({where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{})}});
+  const total=await prisma.contact.count({where:{userId,...(network&&network!=="all"?{network}:{}),...(status&&status!=="all"?{status}:{}),...(search?{OR:[{firstName:{contains:search}},{lastName:{contains:search}},{company:{contains:search}}]}:{})}});
   return NextResponse.json({contacts,total,page,totalPages:Math.max(1,Math.ceil(total/50))},{headers:{"Cache-Control":"private, no-store"}});
  }catch{return NextResponse.json({error:"CRM no disponible"},{status:503});}
 }
