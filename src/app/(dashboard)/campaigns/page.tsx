@@ -32,14 +32,17 @@ const stepLabels: Record<string, string> = {
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   async function loadCampaigns() {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
-      const res = await fetch("/api/campaigns");
+      const res = await fetch("/api/campaigns", { cache: "no-store" });
+      if (!res.ok) throw new Error("No se pudieron cargar las campañas (" + res.status + ")");
       const data = await res.json();
-      setCampaigns(data.campaigns || []);
-    } catch { setCampaigns([]); }
+      if (!Array.isArray(data.campaigns)) throw new Error("Respuesta de campañas inválida");
+      setCampaigns(data.campaigns);
+    } catch (cause) { setCampaigns([]); setError(cause instanceof Error ? cause.message : "Error de conexión"); }
     setLoading(false);
   }
 
@@ -48,9 +51,11 @@ export default function CampaignsPage() {
   async function toggleStatus(campaign: Campaign) {
     const newStatus = campaign.status === "active" ? "paused" : "active";
     try {
-      await fetch(`/api/campaigns/${campaign.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
-    } catch { /* fallback */ }
-    setCampaigns(campaigns.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
+      const res = await fetch(`/api/campaigns/${encodeURIComponent(campaign.id)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
+      if (!res.ok) throw new Error("No se pudo cambiar la campaña (" + res.status + ")");
+      setCampaigns(previous => previous.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
+      setError("");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Error de conexión"); }
   }
 
   return (
@@ -65,6 +70,7 @@ export default function CampaignsPage() {
         </Link>
       </div>
 
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
