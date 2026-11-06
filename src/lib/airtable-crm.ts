@@ -32,7 +32,9 @@ function configFor(userId: string): { token: string } | null {
   const ownerId = process.env.PROSPECTOR_AIRTABLE_OWNER_USER_ID;
   // Airtable's shared commercial CRM is NOT a multi-tenant data store.
   // Fail closed rather than reveal a different user's contact records.
-  if (!token || !ownerId || userId !== ownerId) return null;
+  if (!ownerId || userId !== ownerId) return null;
+  // Never silently fall back to another CRM if Airtable is assigned to this user.
+  if (!token) throw new Error("Airtable CRM credentials are missing");
   return { token };
 }
 
