@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface Contact {
   id: string;
@@ -86,9 +87,12 @@ export default function ContactsPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">CRM · Contactos</h1><p className="mt-1 text-sm text-indigo-600">Central de prospección y oportunidades comerciales</p>
           <p className="text-sm text-slate-500">{total} registros</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition hover:from-indigo-700 hover:to-violet-700">
-          Añadir contacto
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/contactos-personales" className="rounded-xl border border-indigo-600 px-4 py-3 text-sm font-semibold text-indigo-700">Mi agenda de contactos</Link>
+          <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition hover:from-indigo-700 hover:to-violet-700">
+            Añadir contacto
+          </button>
+        </div>
       </div>
 
       {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
