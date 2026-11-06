@@ -1,79 +1,68 @@
+import { configuredOperatorId } from "@/lib/operator-identity";
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CONTACTS } from "@/lib/demo-data";
+import prisma from "@/lib/prisma";
 
-let inMemoryContacts = [...DEMO_CONTACTS];
-
-async function getContacts() {
-  try {
-    const prisma = (await import("@/lib/prisma")).default;
-    const contacts = await prisma.contact.findMany({
-      where: { userId: "default-user" },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    if (contacts.length > 0) return contacts;
-  } catch { /* DB not available */ }
-  return inMemoryContacts;
-}
+// Safe single-operator mode: the authenticated API token does not imply a
+// multi-tenant identity. Explicitly configure the existing operator's DB user ID.
+// Never use a shared demo identity for production CRM data.
+const unavailable = () => NextResponse.json(
+  { error: "Operator identity is not configured" }, { status: 503 }
+);
 
 export async function GET(request: NextRequest) {
+  const userId = configuredOperatorId();
+  if (!userId) return unavailable();
   try {
     const { searchParams } = new URL(request.url);
     const network = searchParams.get("network");
     const status = searchParams.get("status");
     const search = searchParams.get("search");
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contacts: any[] = await getContacts();
-
-    if (network && network !== "all") contacts = contacts.filter((c: any) => c.network === network);
-    if (status && status !== "all") contacts = contacts.filter((c: any) => c.status === status);
-    if (search) {
-      const s = search.toLowerCase();
-      contacts = contacts.filter((c: any) =>
-        c.firstName.toLowerCase().includes(s) ||
-        (c.lastName || "").toLowerCase().includes(s) ||
-        (c.company || "").toLowerCase().includes(s)
-      );
-    }
-
+    const contacts = await prisma.contact.findMany({
+      where: {
+        userId,
+        ...(network && network !== "all" ? { network } : {}),
+        ...(status && status !== "all" ? { status } : {}),
+        ...(search ? { OR: [
+          { firstName: { contains: search } },
+          { lastName: { contains: search } },
+          { company: { contains: search } },
+        ] } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
     return NextResponse.json({ contacts, total: contacts.length, page: 1, totalPages: 1 });
   } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ contacts: DEMO_CONTACTS, total: DEMO_CONTACTS.length, page: 1, totalPages: 1 });
+    console.error("Error fetching contacts:", error);
+    return NextResponse.json({ error: "Contact database unavailable" }, { status: 503 });
   }
 }
-
 export async function POST(request: NextRequest) {
+  const userId = configuredOperatorId();
+  if (!userId) return unavailable();
   try {
     const body = await request.json();
-    const newContact = {
-      id: `c${Date.now()}`,
-      userId: "default-user",
-      firstName: body.firstName || "Unknown",
-      lastName: body.lastName || null,
-      email: body.email || null,
-      company: body.company || null,
-      jobTitle: body.jobTitle || null,
-      network: body.network || "other",
-      status: "new",
-      score: 0,
-      tags: JSON.stringify(body.tags || []),
-      profileUrl: body.profileUrl || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      const prisma = (await import("@/lib/prisma")).default;
-      const contact = await prisma.contact.create({ data: newContact as never });
-      return NextResponse.json(contact, { status: 201 });
-    } catch {
-      inMemoryContacts.unshift(newContact as typeof inMemoryContacts[0]);
-      return NextResponse.json(newContact, { status: 201 });
+    if (typeof body.firstName !== "string" || !body.firstName.trim()) {
+      return NextResponse.json({ error: "firstName is required" }, { status: 400 });
     }
+    const contact = await prisma.contact.create({
+      data: {
+        userId,
+        firstName: body.firstName.trim(),
+        lastName: body.lastName || null,
+        email: body.email || null,
+        company: body.company || null,
+        jobTitle: body.jobTitle || null,
+        network: body.network || "other",
+        status: "new",
+        score: 0,
+        tags: JSON.stringify(Array.isArray(body.tags) ? body.tags : []),
+        profileUrl: body.profileUrl || null,
+      },
+    });
+    return NextResponse.json(contact, { status: 201 });
   } catch (error) {
-    console.error("Error:", error);
-    return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
+    console.error("Error creating contact:", error);
+    return NextResponse.json({ error: "Contact was not saved" }, { status: 503 });
   }
 }

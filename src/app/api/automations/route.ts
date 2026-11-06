@@ -1,45 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTOMATION_TEMPLATES, evaluateConditions, suggestTags } from "@/lib/automations";
 
-// GET /api/automations - List automation rules
+// Templates are examples, not enabled production jobs.
 export async function GET() {
-  return NextResponse.json({ rules: AUTOMATION_TEMPLATES });
+  return NextResponse.json({ rules: AUTOMATION_TEMPLATES, simulationOnly: true, executionEnabled: false });
 }
 
-// POST /api/automations - Execute or create automation
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action } = body;
-
-    switch (action) {
-      case "evaluate": {
-        // Check if conditions match
-        const result = evaluateConditions(body.conditions, body.context);
-        return NextResponse.json({ matches: result });
-      }
-
-      case "suggest_tags": {
-        const tags = suggestTags(body.contact);
-        return NextResponse.json({ tags });
-      }
-
-      case "trigger": {
-        // Simulate triggering an automation
-        const matchingRules = AUTOMATION_TEMPLATES.filter(
-          (rule) => rule.isActive && rule.trigger.type === body.triggerType
-        );
+    switch (body.action) {
+      case "evaluate":
+        return NextResponse.json({ matches: evaluateConditions(body.conditions, body.context), simulationOnly: true });
+      case "suggest_tags":
+        return NextResponse.json({ tags: suggestTags(body.contact), simulationOnly: true });
+      case "trigger":
         return NextResponse.json({
-          triggered: matchingRules.length,
-          rules: matchingRules.map((r) => ({ id: r.id, name: r.name, actions: r.actions })),
-        });
-      }
-
+          error: "Automation execution is disabled until authenticated approval and a real execution adapter exist",
+          triggered: 0,
+          executionEnabled: false,
+        }, { status: 503 });
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
   } catch (error) {
-    console.error("Automation error:", error);
-    return NextResponse.json({ error: "Automation failed" }, { status: 500 });
+    console.error("Automation evaluation failed:", error);
+    return NextResponse.json({ error: "Automation evaluation failed" }, { status: 400 });
   }
 }

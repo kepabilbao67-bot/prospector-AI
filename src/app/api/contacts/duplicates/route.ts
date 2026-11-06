@@ -1,55 +1,40 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { configuredOperatorId } from "@/lib/operator-identity";
 
-// GET /api/contacts/duplicates - Find potential duplicate contacts
+// Limited to the configured single operator. API access is gated by src/proxy.ts.
+// Multiuser release still requires user sessions and request-scoped authorization.
 export async function GET() {
+  const userId = configuredOperatorId();
+  if (!userId) {
+    return NextResponse.json({ error: "Operator identity not configured" }, { status: 503 });
+  }
   try {
     const contacts = await prisma.contact.findMany({
-      where: { userId: "default-user" },
+      where: { userId },
       select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        company: true,
-        network: true,
-        profileUrl: true,
+        id: true, firstName: true, lastName: true, email: true,
+        company: true, network: true, profileUrl: true,
       },
     });
-
-    const duplicates: { ids: string[]; reason: string; contacts: typeof contacts }[] = [];
-    const seen = new Map<string, typeof contacts[0][]>();
-
-    for (const contact of contacts) {
-      // Check by email
-      if (contact.email) {
-        const key = `email:${contact.email.toLowerCase()}`;
-        if (!seen.has(key)) seen.set(key, []);
-        seen.get(key)!.push(contact);
-      }
-
-      // Check by name + company
-      const nameKey = `name:${contact.firstName.toLowerCase()}_${(contact.lastName || "").toLowerCase()}_${(contact.company || "").toLowerCase()}`;
-      if (!seen.has(nameKey)) seen.set(nameKey, []);
-      seen.get(nameKey)!.push(contact);
+    const groups = new Map<string, typeof contacts>();
+    for (const c of contacts) {
+      const email = c.email?.trim().toLowerCase();
+      const name = [c.firstName, c.lastName || "", c.company || ""].map(v => v.trim().toLowerCase()).join("|");
+      const keys = [
+        ...(email ? [`email:${email}`] : []),
+        ...(c.firstName.trim() && c.company?.trim() ? [`name:${name}`] : []),
+      ];
+      for (const key of keys) groups.set(key, [...(groups.get(key) || []), c]);
     }
-
-    for (const [key, group] of seen.entries()) {
-      if (group.length > 1) {
-        duplicates.push({
-          ids: group.map(c => c.id),
-          reason: key.startsWith("email:") ? "Mismo email" : "Mismo nombre + empresa",
-          contacts: group,
-        });
-      }
-    }
-
-    return NextResponse.json({
-      duplicates,
-      totalDuplicates: duplicates.length,
-    });
+    const duplicates = [...groups].filter(([, list]) => list.length > 1).map(([key, list]) => ({
+      ids: list.map(c => c.id),
+      reason: key.startsWith("email:") ? "Mismo email" : "Mismo nombre + empresa",
+      contacts: list,
+    }));
+    return NextResponse.json({ duplicates, totalDuplicates: duplicates.length });
   } catch (error) {
-    console.error("Error finding duplicates:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    console.error("Error checking contact duplicates:", error);
+    return NextResponse.json({ error: "Contact database unavailable" }, { status: 503 });
   }
 }

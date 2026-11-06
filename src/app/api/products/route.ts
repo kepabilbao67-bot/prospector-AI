@@ -1,28 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-// In-memory products store (in production, use DB)
-let products = [
-  {
-    id: "1", name: "Diseño Web Profesional", description: "Landing page o sitio web completo",
-    price: "497", currency: "€", type: "service",
-    benefits: ["Diseño personalizado", "SEO básico", "Responsive", "Entrega en 7 días"],
-    deliveryTime: "7 días", isActive: true,
-  },
-  {
-    id: "2", name: "Gestión de Redes Sociales", description: "Contenido y engagement mensual",
-    price: "299/mes", currency: "€", type: "subscription",
-    benefits: ["20 posts/mes", "Stories diarias", "Engagement activo", "Reporte mensual"],
-    deliveryTime: "Mensual", isActive: true,
-  },
-];
-
-export async function GET() {
-  return NextResponse.json({ products });
-}
-
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const product = { id: Date.now().toString(), ...body, isActive: true };
-  products = [product, ...products];
-  return NextResponse.json(product, { status: 201 });
-}
+// Commercial catalog persistence and prices have not been verified.
+// Never return invented offers or acknowledge an unsaved product as created.
+const unavailable = () => NextResponse.json(
+  { error: "Product catalog is not configured", products: [] },
+  { status: 503 }
+);
+export async function GET() { return unavailable(); }
+export async function POST() { return unavailable(); }
