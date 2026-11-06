@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Step = "objective" | "network" | "product" | "tone" | "generating" | "result";
 
@@ -34,28 +34,88 @@ export default function WizardPage() {
   });
   const [result, setResult] = useState<GeneratedCampaign | null>(null);
   const [benefitInput, setBenefitInput] = useState("");
+  const [generationError, setGenerationError] = useState("");
+  const [ai360Available, setAi360Available] = useState(false);
+  const [useAi360, setUseAi360] = useState(false);
+  const [ai360Notice, setAi360Notice] = useState("");
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/ai360", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : { available: false })
+      .then(result => { if (mounted) setAi360Available(result.available === true); })
+      .catch(() => { if (mounted) setAi360Available(false); });
+    return () => { mounted = false; };
+  }, []);
 
   async function generateCampaign() {
+    setGenerationError("");
+    setAi360Notice("");
     setStep("generating");
-    const strategyRes = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generate_strategy", params: { network: data.network, objective: data.objective, product: { name: data.product.name, price: data.product.price }, dailyBudgetTime: data.effort } }),
-    });
-    const strategy = await strategyRes.json();
-
-    const messages: string[] = [];
-    for (const type of ["first_message", "follow_up", "proposal"]) {
-      const res = await fetch("/api/ai", {
+    try {
+      const strategyRes = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate_message", context: { contact: { firstName: "{{nombre}}", company: "{{empresa}}", jobTitle: "{{cargo}}", network: data.network }, product: data.product.name ? data.product : undefined, tone: data.tone, language: "es", messageType: type } }),
+        body: JSON.stringify({ action: "generate_strategy", params: { network: data.network, objective: data.objective, product: { name: data.product.name, price: data.product.price }, dailyBudgetTime: data.effort } }),
       });
-      const msg = await res.json();
-      messages.push(msg.message);
+      if (!strategyRes.ok) throw new Error("No se pudo generar la estrategia.");
+      const strategy = await strategyRes.json();
+      if (!strategy || typeof strategy.name !== "string" || !Array.isArray(strategy.steps) ||
+          !strategy.settings || !Array.isArray(strategy.tips)) throw new Error("Estrategia incompleta.");
+
+      const messages: string[] = [];
+      let verifiedAi360 = 0;
+      let fallback = false;
+      const requestedAi360 = ai360Available && useAi360;
+      for (const type of ["first_message", "follow_up", "proposal"]) {
+        const context = {
+          contact: { firstName: "{{nombre}}", company: "{{empresa}}", jobTitle: "{{cargo}}", network: data.network },
+          product: data.product.name ? data.product : undefined,
+          tone: data.tone, language: "es", messageType: type,
+        };
+        let message = "";
+        if (requestedAi360 && !fallback) {
+          try {
+            const aiRes = await fetch("/api/ai360", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "draft_message", context }),
+            });
+            if (!aiRes.ok) throw new Error("AI360 unavailable");
+            const ai = await aiRes.json();
+            if (ai.source !== "apis360-local" || ai.costUsd !== 0 || ai.draftOnly !== true ||
+                typeof ai.message !== "string" || !ai.message.trim()) {
+              throw new Error("AI360 unverified");
+            }
+            message = ai.message;
+            verifiedAi360++;
+          } catch {
+            fallback = true;
+          }
+        }
+        if (!message) {
+          const res = await fetch("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "generate_message", context }),
+          });
+          if (!res.ok) throw new Error("No se pudo generar uno de los mensajes.");
+          const msg = await res.json();
+          if (typeof msg.message !== "string") throw new Error("El generador no devolvió mensaje.");
+          message = msg.message;
+        }
+        messages.push(message);
+      }
+      setAi360Notice(requestedAi360
+        ? (fallback
+          ? "IA360 dejó de responder: " + verifiedAi360 + " borradores IA y el resto mediante plantillas."
+          : "3 borradores generados por APIs360 local. Coste API externo: 0.")
+        : "Mensajes generados mediante plantillas locales.");
+      setResult({ ...strategy, messages });
+      setStep("result");
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "No se pudo generar la campaña.");
+      setStep("tone");
     }
-    setResult({ ...strategy, messages });
-    setStep("result");
   }
 
   async function saveCampaign() {
@@ -200,6 +260,13 @@ export default function WizardPage() {
               ))}
             </div>
           </div>
+          {generationError && <p role="alert" className="text-xs text-red-700">{generationError}</p>}
+          <label className="flex items-center gap-2 text-xs text-gray-700">
+            <input type="checkbox" checked={useAi360 && ai360Available}
+              disabled={!ai360Available} onChange={e => setUseAi360(e.target.checked)} />
+            Mejorar borradores con APIs360 local {ai360Available ? "(disponible)" : "(solo en PC conectado)"}
+          </label>
+          <p className="text-[11px] text-gray-500">Usa marcadores genéricos, sin contactos reales; nunca envía mensajes.</p>
           <div className="flex gap-2 pt-2">
             <button onClick={() => setStep("product")} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600">Volver</button>
             <button onClick={generateCampaign} className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-medium">Generar campaña</button>
@@ -242,6 +309,7 @@ export default function WizardPage() {
           </div>
 
           {/* Messages */}
+          {ai360Notice && <p role="status" className="text-xs text-gray-600">{ai360Notice}</p>}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
               <p className="text-xs font-medium text-gray-700 uppercase tracking-wide">Mensajes generados</p>
