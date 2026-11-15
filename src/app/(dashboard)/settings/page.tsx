@@ -1,10 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
-const networkLabels: Record<string, string> = {
-  linkedin: "LinkedIn", fiverr: "Fiverr", twitter: "Twitter/X", instagram: "Instagram", email: "Email (SMTP)", whatsapp: "WhatsApp", tiktok: "TikTok", facebook: "Facebook",
-};
+import { useEffect, useState } from "react";
 
 interface NetworkConfig {
   id: string;
@@ -14,27 +10,27 @@ interface NetworkConfig {
 }
 
 const defaultNetworks: NetworkConfig[] = [
-  { id: "linkedin", name: "LinkedIn", isConnected: true, dailyLimit: 30 },
-  { id: "fiverr", name: "Fiverr", isConnected: true, dailyLimit: 20 },
-  { id: "twitter", name: "Twitter/X", isConnected: true, dailyLimit: 50 },
+  { id: "linkedin", name: "LinkedIn", isConnected: false, dailyLimit: 30 },
+  { id: "fiverr", name: "Fiverr", isConnected: false, dailyLimit: 20 },
+  { id: "twitter", name: "Twitter/X", isConnected: false, dailyLimit: 50 },
   { id: "instagram", name: "Instagram", isConnected: false, dailyLimit: 40 },
-  { id: "email", name: "Email (SMTP)", isConnected: true, dailyLimit: 100 },
+  { id: "email", name: "Email (SMTP)", isConnected: false, dailyLimit: 100 },
   { id: "whatsapp", name: "WhatsApp", isConnected: false, dailyLimit: 30 },
   { id: "tiktok", name: "TikTok", isConnected: false, dailyLimit: 30 },
   { id: "facebook", name: "Facebook", isConnected: false, dailyLimit: 30 },
 ];
 
 export default function SettingsPage() {
-  const [networks, setNetworks] = useState(defaultNetworks);
+  const networks = defaultNetworks;
   const [tab, setTab] = useState("networks");
-
-  function toggleNetwork(id: string) {
-    setNetworks(networks.map(n => n.id === id ? { ...n, isConnected: !n.isConnected } : n));
-  }
-
-  function updateLimit(id: string, limit: number) {
-    setNetworks(networks.map(n => n.id === id ? { ...n, dailyLimit: limit } : n));
-  }
+  const [instagram, setInstagram] = useState<{connected: boolean; username?: string; reason?: string} | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/instagram/status", { signal: controller.signal, cache: "no-store" })
+      .then(async res => { const data = await res.json(); setInstagram({ connected: res.ok && data.connected === true, username: data.username, reason: data.reason }); })
+      .catch(() => { if (!controller.signal.aborted) setInstagram({connected: false, reason: "verification_unavailable"}); });
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -60,20 +56,19 @@ export default function SettingsPage() {
       {/* Networks */}
       {tab === "networks" && (
         <div className="space-y-3">
-          {networks.map((network) => (
+          {networks.map((network) => network.id === "instagram" ? (
+            <div key="instagram" className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-3">
+              <p className="text-sm font-medium text-gray-900">Instagram · Meta oficial</p>
+              <p className="text-xs text-gray-600">{instagram === null ? "Comprobando conexión..." : instagram.connected ? `Conectado: @${instagram.username} (solo lectura)` : instagram.reason === "not_configured" ? "Pendiente: configurar las credenciales de Instagram en el servidor." : "Instagram no conectado o no verificable."}</p>
+              <a href="/api/instagram/connect" className="inline-flex self-start rounded bg-gray-900 px-4 py-2 text-xs font-medium text-white">Autorizar con Instagram</a>
+            </div>
+          ) : (
             <div key={network.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900">{network.name}</p>
-                <p className="text-[11px] text-gray-500">Límite: {network.dailyLimit} acciones/día</p>
+                <p className="text-[11px] text-gray-500">Conexión no verificada; los envíos están deshabilitados.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <input type="number" value={network.dailyLimit} onChange={(e) => updateLimit(network.id, parseInt(e.target.value) || 0)}
-                  className="w-16 px-2 py-1.5 border border-gray-200 rounded text-xs text-center outline-none focus:ring-1 focus:ring-gray-900" />
-                <button onClick={() => toggleNetwork(network.id)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${network.isConnected ? "bg-gray-900" : "bg-gray-300"}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${network.isConnected ? "translate-x-5" : "translate-x-0.5"}`} />
-                </button>
-              </div>
+              <span className="text-xs text-gray-500">Pendiente de autorización oficial</span>
             </div>
           ))}
         </div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Contact {
   id: string;
   firstName: string;
   lastName: string | null;
+  phone?: string | null;
   email: string | null;
   company: string | null;
   jobTitle: string | null;
@@ -29,27 +30,38 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [crmSource] = useState<"prospector" | "kepa">("kepa");
+  const [crmError, setCrmError] = useState("");
   const [filters, setFilters] = useState({ network: "all", status: "all", search: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Contact | null>(null);
   const [aiScore, setAiScore] = useState<{ score: number; reasons: string[]; recommendation: string } | null>(null);
 
-  async function loadContacts() {
+  const loadContacts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filters.network !== "all") params.set("network", filters.network);
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.search) params.set("search", filters.search);
-      const res = await fetch(`/api/contacts?${params.toString()}`);
+      const path = crmSource === "kepa" ? "/api/kepa-crm/contacts" : `/api/contacts?${params.toString()}`;
+      const res = await fetch(path, { cache: "no-store" });
       const data = await res.json();
-      setContacts(data.contacts || []);
-      setTotal(data.total || 0);
-    } catch { setContacts([]); }
+      if (!res.ok || !Array.isArray(data.contacts)) throw new Error(data.reason || data.error || "CRM no disponible");
+      const available = data.contacts as Contact[];
+      const filtered = crmSource === "kepa" ? available.filter(c =>
+        (filters.network === "all" || c.network === filters.network) &&
+        (filters.status === "all" || c.status === filters.status) &&
+        (!filters.search || [c.firstName, c.lastName, c.company, c.phone, c.email].some(v => v?.toLowerCase().includes(filters.search.toLowerCase())))
+      ) : available;
+      setContacts(filtered);
+      setTotal(crmSource === "kepa" ? filtered.length : data.total || 0);
+      setCrmError("");
+    } catch (err) { setContacts([]); setTotal(0); setCrmError(err instanceof Error ? err.message : "CRM no disponible"); }
     setLoading(false);
-  }
+  }, [filters, crmSource]);
 
-  useEffect(() => { loadContacts(); }, [filters]);
+  useEffect(() => { void Promise.resolve().then(loadContacts); }, [loadContacts]);
 
   async function scoreContact(contact: Contact) {
     try {
@@ -75,26 +87,24 @@ export default function ContactsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">CRM · Contactos</h1><p className="mt-1 text-sm text-indigo-600">Central de prospección y oportunidades comerciales</p>
-          <p className="text-sm text-slate-500">{total} registros</p>
+          <p className="text-sm text-slate-500">{total} registros {crmSource === "kepa" ? "(CRM Kepa, lectura directa)" : "(Prospectoría)"}</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition hover:from-indigo-700 hover:to-violet-700">
+        {crmSource === "prospector" && <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition hover:from-indigo-700 hover:to-violet-700">
           Añadir contacto
-        </button>
+        </button>}
       </div>
 
+      <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+        <p className="text-sm font-medium">CRM único: Kepa · Llamadas 360</p>
+        {crmSource === "kepa" && <p className="text-xs text-gray-600">Lectura directa y protegida desde Llamadas 360. Sin importar, duplicar ni modificar contactos.</p>}
+        {crmError && <p role="alert" className="text-sm text-red-700">No se pudo verificar el CRM: {crmError}. No se muestran datos de demostración.</p>}
+      </div>
       {/* Search + Filters */}
       <div className="space-y-2">
         <input type="text" placeholder="Buscar por nombre, empresa..."
           className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
           value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {["all", "linkedin", "fiverr", "twitter", "instagram", "email"].map((n) => (
-            <button key={n} onClick={() => setFilters({ ...filters, network: n })}
-              className={`shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filters.network === n ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-              {n === "all" ? "Todos" : networkLabels[n]}
-            </button>
-          ))}
-        </div>
+        <p className="text-xs text-gray-500">Contactos originales de Kepa. Búsqueda por nombre, empresa, teléfono o correo.</p>
       </div>
 
       {/* Table */}
@@ -116,7 +126,7 @@ export default function ContactsPage() {
           </div>
           <div className="divide-y divide-gray-100">
             {contacts.map((contact) => (
-              <button key={contact.id} onClick={() => { setSelected(contact); scoreContact(contact); }}
+              <button key={contact.id} onClick={() => { setSelected(contact); if (crmSource === "prospector") scoreContact(contact); else setAiScore(null); }}
                 className="w-full px-4 py-3 flex items-center gap-3 md:grid md:grid-cols-12 md:gap-2 hover:bg-gray-50 transition-colors text-left">
                 {/* Avatar + Name */}
                 <div className="flex items-center gap-3 md:col-span-3">
@@ -135,7 +145,7 @@ export default function ContactsPage() {
                 </div>
                 {/* Network */}
                 <div className="hidden md:block md:col-span-2">
-                  <span className="text-xs text-gray-600">{networkLabels[contact.network]}</span>
+                  <span className="text-xs text-gray-600">{crmSource === "kepa" ? "CRM Kepa" : networkLabels[contact.network]}</span>
                 </div>
                 {/* Status */}
                 <div className="md:col-span-2 ml-auto md:ml-0">
@@ -145,14 +155,14 @@ export default function ContactsPage() {
                     contact.status === "qualified" ? "bg-purple-50 text-purple-700" :
                     contact.status === "contacted" ? "bg-yellow-50 text-yellow-700" :
                     "bg-gray-50 text-gray-600"
-                  }`}>{statusLabels[contact.status] || contact.status}</span>
+                  }`}>{crmSource === "kepa" ? "CRM original" : statusLabels[contact.status] || contact.status}</span>
                 </div>
                 {/* Score - desktop */}
                 <div className="hidden md:flex md:col-span-2 items-center gap-2">
                   <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-gray-700 rounded-full" style={{ width: `${contact.score}%` }} />
                   </div>
-                  <span className="text-[11px] text-gray-500">{contact.score}</span>
+                  <span className="text-[11px] text-gray-500">{crmSource === "kepa" ? "Sin puntuar" : contact.score}</span>
                 </div>
               </button>
             ))}
@@ -195,6 +205,7 @@ export default function ContactsPage() {
             )}
 
             <div className="space-y-2 text-sm">
+              {selected.phone && <div className="flex justify-between py-1.5 border-b border-gray-50"><span className="text-gray-500">Teléfono</span><span className="text-gray-900">{selected.phone}</span></div>}
               <div className="flex justify-between py-1.5 border-b border-gray-50">
                 <span className="text-gray-500">Email</span>
                 <span className="text-gray-900">{selected.email || "—"}</span>

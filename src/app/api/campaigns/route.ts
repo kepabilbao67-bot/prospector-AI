@@ -1,57 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEMO_CAMPAIGNS } from "@/lib/demo-data";
-
-let inMemoryCampaigns = [...DEMO_CAMPAIGNS];
-
-async function getCampaigns() {
+import { getSessionUser, unauthorized } from "@/lib/auth";
+async function getCampaigns(userId: string) {
   try {
     const prisma = (await import("@/lib/prisma")).default;
     const campaigns = await prisma.campaign.findMany({
-      where: { userId: "default-user" },
+      where: { userId },
       include: { steps: { orderBy: { order: "asc" } }, campaignContacts: true },
       orderBy: { createdAt: "desc" },
     });
-    if (campaigns.length > 0) return campaigns;
-  } catch { /* DB not available */ }
-  return inMemoryCampaigns;
+    return campaigns;
+  } catch {
+    throw new Error("Campaign database unavailable");
+  }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const userId = getSessionUser(request);
+  if (!userId) return unauthorized();
   try {
-    const campaigns = await getCampaigns();
+    const campaigns = await getCampaigns(userId);
     return NextResponse.json({ campaigns });
   } catch {
-    return NextResponse.json({ campaigns: DEMO_CAMPAIGNS });
+    return NextResponse.json({ error: "CRM no disponible; no se muestran campañas de demostración" }, { status: 503 });
   }
 }
 
 export async function POST(request: NextRequest) {
+  const userId = getSessionUser(request);
+  if (!userId) return unauthorized();
   try {
     const body = await request.json();
-    const campaign = {
-      id: `camp${Date.now()}`,
-      userId: "default-user",
-      name: body.name,
-      description: body.description || null,
-      network: body.network || "multi",
-      status: "draft",
-      settings: JSON.stringify(body.settings || { dailyLimit: 50 }),
-      stats: '{"sent":0,"replied":0,"converted":0}',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      steps: [],
-      campaignContacts: [],
-    };
-
     try {
       const prisma = (await import("@/lib/prisma")).default;
       const created = await prisma.campaign.create({
-        data: { userId: "default-user", name: body.name, description: body.description, network: body.network || "multi", status: "draft", settings: JSON.stringify(body.settings || {}) },
+        data: { userId, name: body.name, description: body.description, network: body.network || "multi", status: "draft", settings: JSON.stringify(body.settings || {}) },
       });
       return NextResponse.json(created, { status: 201 });
     } catch {
-      inMemoryCampaigns.unshift(campaign);
-      return NextResponse.json(campaign, { status: 201 });
+      return NextResponse.json({ error: "CRM no disponible; campaña no guardada" }, { status: 503 });
     }
   } catch (error) {
     console.error("Error:", error);
