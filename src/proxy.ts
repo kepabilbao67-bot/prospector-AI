@@ -10,7 +10,7 @@ const scopedRoutes = new Set([
 ]);
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (path === "/api/auth/login") return NextResponse.next();
+  if (path === "/api/auth/login" || path === "/api/auth/register") return NextResponse.next();
   const localSetup = process.env.PROSPECTOR_LOCAL_SETUP === "1" &&
     ["127.0.0.1", "localhost"].includes(request.nextUrl.hostname);
   if (path === "/setup" || path === "/api/auth/setup") {
@@ -23,7 +23,7 @@ export function proxy(request: NextRequest) {
       return NextResponse.json({ error: "Ruta pendiente de aislamiento de usuarios" }, { status: 403 });
     if (!getSessionUser(request))
       return NextResponse.json({ error: "Autenticacion requerida" }, { status: 401 });
-  } else if (path !== "/login" && !getSessionUser(request)) {
+  } else if (path !== "/login" && path !== "/activate" && !getSessionUser(request)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   return NextResponse.next();

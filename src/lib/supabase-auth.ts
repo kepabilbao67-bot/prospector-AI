@@ -41,3 +41,23 @@ export async function verifySupabasePassword(email: string, password: string):
     return "ok";
   } catch { return "unavailable"; }
 }
+
+export async function registerSupabaseOwner(email: string, password: string):
+  Promise<"sent" | "invalid" | "rate_limited" | "unavailable"> {
+  const config = supabaseAuthConfig();
+  if (!config) return "unavailable";
+  if (email.trim().toLowerCase() !== config.owner) return "invalid";
+  if (password.length < 20 || password.length > 256) return "invalid";
+  try {
+    const response = await fetch(config.url + "/auth/v1/signup", {
+      method: "POST",
+      headers: { "apikey": config.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: config.owner, password }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+    if (response.status === 429) return "rate_limited";
+    if (!response.ok) return "unavailable";
+    return "sent";
+  } catch { return "unavailable"; }
+}

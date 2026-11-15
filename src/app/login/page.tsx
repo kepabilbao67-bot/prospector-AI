@@ -37,7 +37,8 @@ export default function LoginPage() {
       </label>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button disabled={busy} type="submit" className="w-full rounded bg-blue-700 p-3 font-semibold text-white disabled:opacity-50">{busy ? "Comprobando..." : "Entrar"}</button>
-      <a href="/setup" className="block text-center text-sm text-blue-700 underline">Primera activación en el portátil</a>
+      <a href="/activate" className="block text-center text-sm text-blue-700 underline">Activar mi cuenta de Vercel</a>
+      <a href="/setup" className="block text-center text-xs text-gray-500 underline">Primera activación local (solo portátil)</a>
     </form>
   </main>;
 }
