@@ -18,16 +18,26 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
 
-  async function loadAnalytics() {
-    setLoading(true);
+  // Carga en dos pasos: fetch* no toca el estado y apply* lo actualiza. El
+  // efecto aplica el resultado en el callback e ignora respuestas antiguas si
+  // el filtro cambia antes de que llegue (evita que una respuesta vieja pise a la nueva).
+  async function fetchAnalytics(d: number) {
     try {
-      const res = await fetch(`/api/analytics?days=${days}`);
-      setData(await res.json());
-    } catch { /* demo data from API */ }
+      const res = await fetch(`/api/analytics?days=${d}`);
+      return await res.json();
+    } catch { return null; /* demo data from API */ }
+  }
+
+  function applyAnalytics(result: Awaited<ReturnType<typeof fetchAnalytics>>) {
+    if (result) setData(result);
     setLoading(false);
   }
 
-  useEffect(() => { loadAnalytics(); }, [days]);
+  useEffect(() => {
+    let ignore = false;
+    fetchAnalytics(days).then((r) => { if (!ignore) applyAnalytics(r); });
+    return () => { ignore = true; };
+  }, [days]);
 
   if (loading || !data) {
     return <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>;

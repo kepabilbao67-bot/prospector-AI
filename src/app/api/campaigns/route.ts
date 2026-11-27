@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEMO_CAMPAIGNS } from "@/lib/demo-data";
 
-let inMemoryCampaigns = [...DEMO_CAMPAIGNS];
+const inMemoryCampaigns = [...DEMO_CAMPAIGNS];
 
 async function getCampaigns() {
   try {

@@ -5,18 +5,23 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  // Use Turso/Neon in production if configured
+  // Turso (libSQL) en produccion si esta configurado.
+  // Requiere previewFeatures = ["driverAdapters"] en schema.prisma y que
+  // @prisma/adapter-libsql tenga la misma version que @prisma/client.
   if (process.env.TURSO_DATABASE_URL) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { PrismaLibSql } = require("@prisma/adapter-libsql");
-      const adapter = new PrismaLibSql({
+      /* eslint-disable @typescript-eslint/no-require-imports */
+      const { createClient } = require("@libsql/client");
+      const { PrismaLibSQL } = require("@prisma/adapter-libsql");
+      /* eslint-enable @typescript-eslint/no-require-imports */
+      const libsql = createClient({
         url: process.env.TURSO_DATABASE_URL,
-        authToken: process.env.TURSO_AUTH_TOKEN || "",
+        authToken: process.env.TURSO_AUTH_TOKEN || undefined,
       });
-      return new PrismaClient({ adapter } as never);
-    } catch {
-      // Fallback to standard client
+      return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
+    } catch (error) {
+      // Antes este fallo se ignoraba en silencio y se usaba la BD local.
+      console.error("[prisma] No se pudo usar Turso; se usa DATABASE_URL:", error);
     }
   }
 

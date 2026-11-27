@@ -33,17 +33,31 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadCampaigns() {
-    setLoading(true);
+  // Carga en dos pasos: fetch* no toca el estado y apply* lo actualiza. El
+  // efecto aplica el resultado en el callback e ignora respuestas antiguas si
+  // el filtro cambia antes de que llegue (evita que una respuesta vieja pise a la nueva).
+  async function fetchCampaigns(): Promise<Campaign[]> {
     try {
       const res = await fetch("/api/campaigns");
       const data = await res.json();
-      setCampaigns(data.campaigns || []);
-    } catch { setCampaigns([]); }
+      return data.campaigns || [];
+    } catch { return []; }
+  }
+
+  function applyCampaigns(list: Campaign[]) {
+    setCampaigns(list);
     setLoading(false);
   }
 
-  useEffect(() => { loadCampaigns(); }, []);
+  async function loadCampaigns() {
+    applyCampaigns(await fetchCampaigns());
+  }
+
+  useEffect(() => {
+    let ignore = false;
+    fetchCampaigns().then((list) => { if (!ignore) applyCampaigns(list); });
+    return () => { ignore = true; };
+  }, []);
 
   async function toggleStatus(campaign: Campaign) {
     const newStatus = campaign.status === "active" ? "paused" : "active";

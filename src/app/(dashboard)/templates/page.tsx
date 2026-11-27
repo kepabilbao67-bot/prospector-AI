@@ -29,19 +29,33 @@ export default function TemplatesPage() {
   const [selected, setSelected] = useState<Template | null>(null);
   const [filterNetwork, setFilterNetwork] = useState("all");
 
-  async function loadTemplates() {
-    setLoading(true);
+  // Carga en dos pasos: fetch* no toca el estado y apply* lo actualiza. El
+  // efecto aplica el resultado en el callback e ignora respuestas antiguas si
+  // el filtro cambia antes de que llegue (evita que una respuesta vieja pise a la nueva).
+  async function fetchTemplates(network: string) {
     try {
       const params = new URLSearchParams();
-      if (filterNetwork !== "all") params.set("network", filterNetwork);
+      if (network !== "all") params.set("network", network);
       const res = await fetch(`/api/templates?${params.toString()}`);
       const data = await res.json();
-      setTemplates(data.templates || []);
-    } catch { setTemplates([]); }
+      return data.templates || [];
+    } catch { return []; }
+  }
+
+  function applyTemplates(list: Awaited<ReturnType<typeof fetchTemplates>>) {
+    setTemplates(list);
     setLoading(false);
   }
 
-  useEffect(() => { loadTemplates(); }, [filterNetwork]);
+  async function loadTemplates() {
+    applyTemplates(await fetchTemplates(filterNetwork));
+  }
+
+  useEffect(() => {
+    let ignore = false;
+    fetchTemplates(filterNetwork).then((list) => { if (!ignore) applyTemplates(list); });
+    return () => { ignore = true; };
+  }, [filterNetwork]);
 
   async function createTemplate(formData: FormData) {
     await fetch("/api/templates", {
