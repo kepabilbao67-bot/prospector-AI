@@ -27,8 +27,10 @@ export async function GET(request: NextRequest) {
       counts: counts.reduce((acc, c) => ({ ...acc, [c.status]: c._count.id }), {}),
     });
   } catch (error) {
-    console.error("Error fetching queue:", error);
-    return NextResponse.json({ error: "Error fetching queue" }, { status: 500 });
+    // Sin base de datos (modo demo) no hay cola real. Se devuelve vacía en vez de
+    // un 500, como hacen las demás rutas; no se inventan tareas que no existen.
+    console.warn("Cola no disponible (sin base de datos):", error instanceof Error ? error.message : error);
+    return NextResponse.json({ tasks: [], counts: {}, demo: true });
   }
 }
 
@@ -59,6 +61,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
     console.error("Error creating task:", error);
-    return NextResponse.json({ error: "Error creating task" }, { status: 500 });
+    return NextResponse.json(
+      { error: "No se pudo crear la tarea: la base de datos no está disponible." },
+      { status: 503 }
+    );
   }
 }
