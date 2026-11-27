@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEMO_CONTACTS } from "@/lib/demo-data";
 
-let inMemoryContacts = [...DEMO_CONTACTS];
+// Campos que usa el filtrado; vale para contactos de Prisma y de demo.
+type FilterableContact = {
+  network: string;
+  status: string;
+  firstName: string;
+  lastName?: string | null;
+  company?: string | null;
+};
+
+const inMemoryContacts = [...DEMO_CONTACTS];
 
 async function getContacts() {
   try {
@@ -23,14 +32,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let contacts: any[] = await getContacts();
+    let contacts: FilterableContact[] = await getContacts();
 
-    if (network && network !== "all") contacts = contacts.filter((c: any) => c.network === network);
-    if (status && status !== "all") contacts = contacts.filter((c: any) => c.status === status);
+    if (network && network !== "all") contacts = contacts.filter((c) => c.network === network);
+    if (status && status !== "all") contacts = contacts.filter((c) => c.status === status);
     if (search) {
       const s = search.toLowerCase();
-      contacts = contacts.filter((c: any) =>
+      contacts = contacts.filter((c) =>
         c.firstName.toLowerCase().includes(s) ||
         (c.lastName || "").toLowerCase().includes(s) ||
         (c.company || "").toLowerCase().includes(s)

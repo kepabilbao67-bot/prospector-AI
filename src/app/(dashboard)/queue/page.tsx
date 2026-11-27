@@ -28,18 +28,28 @@ export default function QueuePage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("pending");
 
-  async function loadQueue() {
-    setLoading(true);
+  // Carga en dos pasos: fetch* no toca el estado y apply* lo actualiza. El
+  // efecto aplica el resultado en el callback e ignora respuestas antiguas si
+  // el filtro cambia antes de que llegue (evita que una respuesta vieja pise a la nueva).
+  async function fetchQueue(filter: string) {
     try {
-      const res = await fetch(`/api/queue?status=${statusFilter}`);
+      const res = await fetch(`/api/queue?status=${filter}`);
       const data = await res.json();
-      setTasks(data.tasks || []);
-      setCounts(data.counts || {});
-    } catch { setTasks([]); }
+      return { ok: true as const, tasks: data.tasks || [], counts: data.counts || {} };
+    } catch { return { ok: false as const, tasks: [], counts: null }; }
+  }
+
+  function applyQueue(r: Awaited<ReturnType<typeof fetchQueue>>) {
+    setTasks(r.tasks);
+    if (r.ok) setCounts(r.counts);
     setLoading(false);
   }
 
-  useEffect(() => { loadQueue(); }, [statusFilter]);
+  useEffect(() => {
+    let ignore = false;
+    fetchQueue(statusFilter).then((r) => { if (!ignore) applyQueue(r); });
+    return () => { ignore = true; };
+  }, [statusFilter]);
 
   return (
     <div className="space-y-5">

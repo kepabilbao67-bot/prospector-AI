@@ -30,19 +30,29 @@ export default function DashboardPage() {
   const [analytics,setAnalytics]=useState<Analytics | null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState<string | null>(null);
-  const reload=useCallback(async ()=>{
-    setLoading(true);setError(null);
+  // Carga en dos pasos: fetchDashboard no toca el estado y applyDashboard lo
+  // actualiza (en el callback del efecto, ignorando respuestas antiguas).
+  const fetchDashboard=useCallback(async ()=>{
     try {
       const [campaignData,contactData,analyticsData]=await Promise.all([readApi("/api/campaigns"),readApi("/api/contacts?limit=5"),readApi("/api/analytics?days=7")]);
       const c=campaignData as {campaigns?:Campaign[]};
       const co=contactData as {contacts?:Contact[]};
       const a=analyticsData as Analytics;
       if(!Array.isArray(c.campaigns)||!Array.isArray(co.contacts)||!a?.stats) throw new Error("La API devolvió datos incompletos");
-      setCampaigns(c.campaigns);setContacts(co.contacts);setAnalytics(a);
-    }catch(e){setCampaigns([]);setContacts([]);setAnalytics(null);setError(e instanceof Error?e.message:"Error al cargar los datos");}
-    finally {setLoading(false);}
+      return {ok:true as const,campaigns:c.campaigns,contacts:co.contacts,analytics:a};
+    }catch(e){return {ok:false as const,error:e instanceof Error?e.message:"Error al cargar los datos"};}
   },[]);
-  useEffect(()=>{void reload();},[reload]);
+  const applyDashboard=useCallback((r:Awaited<ReturnType<typeof fetchDashboard>>)=>{
+    if(r.ok){setCampaigns(r.campaigns);setContacts(r.contacts);setAnalytics(r.analytics);setError(null);}
+    else{setCampaigns([]);setContacts([]);setAnalytics(null);setError(r.error);}
+    setLoading(false);
+  },[]);
+  const reload=useCallback(async ()=>{applyDashboard(await fetchDashboard());},[applyDashboard,fetchDashboard]);
+  useEffect(()=>{
+    let ignore=false;
+    fetchDashboard().then((r)=>{if(!ignore) applyDashboard(r);});
+    return ()=>{ignore=true;};
+  },[fetchDashboard,applyDashboard]);
   const stats=analytics?.stats;
   const metrics=[
     {title:"Mensajes registrados",value:stats?.messagesSent,detail:"Período consultado: 7 días",icon:MessageSquare,color:"bg-blue-100 text-blue-700"},
@@ -62,7 +72,7 @@ export default function DashboardPage() {
       </div>
     </section>
     <section aria-label="Indicadores comerciales">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Resumen comercial</h2><p className="text-xs text-slate-500">Información recibida de las APIs; no equivale a envíos verificados externamente.</p></div><button type="button" disabled={loading} onClick={()=>void reload()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={14} className={loading?"animate-spin":""}/>Actualizar</button></div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Resumen comercial</h2><p className="text-xs text-slate-500">Información recibida de las APIs; no equivale a envíos verificados externamente.</p></div><button type="button" disabled={loading} onClick={()=>{setLoading(true);setError(null);void reload();}} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={14} className={loading?"animate-spin":""}/>Actualizar</button></div>
       {error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Datos no disponibles: {error}. No se muestran cifras ficticias.</div>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(m=><div key={m.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-4 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{m.title}</span><span className={`rounded-xl p-2 ${m.color}`}><m.icon size={19}/></span></div><p className="text-3xl font-bold tabular-nums text-slate-950">{loading?"…":m.value ?? "—"}</p><p className="mt-1 text-xs text-slate-500">{m.detail}</p></div>)}</div>
     </section>

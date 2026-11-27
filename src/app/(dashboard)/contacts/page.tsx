@@ -34,22 +34,36 @@ export default function ContactsPage() {
   const [selected, setSelected] = useState<Contact | null>(null);
   const [aiScore, setAiScore] = useState<{ score: number; reasons: string[]; recommendation: string } | null>(null);
 
-  async function loadContacts() {
-    setLoading(true);
+  // Carga en dos pasos: fetch* no toca el estado y apply* lo actualiza. El
+  // efecto aplica el resultado en el callback e ignora respuestas antiguas si
+  // el filtro cambia antes de que llegue (evita que una respuesta vieja pise a la nueva).
+  async function fetchContacts(f: typeof filters) {
     try {
       const params = new URLSearchParams();
-      if (filters.network !== "all") params.set("network", filters.network);
-      if (filters.status !== "all") params.set("status", filters.status);
-      if (filters.search) params.set("search", filters.search);
+      if (f.network !== "all") params.set("network", f.network);
+      if (f.status !== "all") params.set("status", f.status);
+      if (f.search) params.set("search", f.search);
       const res = await fetch(`/api/contacts?${params.toString()}`);
       const data = await res.json();
-      setContacts(data.contacts || []);
-      setTotal(data.total || 0);
-    } catch { setContacts([]); }
+      return { ok: true as const, contacts: data.contacts || [], total: data.total || 0 };
+    } catch { return { ok: false as const, contacts: [], total: 0 }; }
+  }
+
+  function applyContacts(r: Awaited<ReturnType<typeof fetchContacts>>) {
+    setContacts(r.contacts);
+    if (r.ok) setTotal(r.total);
     setLoading(false);
   }
 
-  useEffect(() => { loadContacts(); }, [filters]);
+  async function loadContacts() {
+    applyContacts(await fetchContacts(filters));
+  }
+
+  useEffect(() => {
+    let ignore = false;
+    fetchContacts(filters).then((r) => { if (!ignore) applyContacts(r); });
+    return () => { ignore = true; };
+  }, [filters]);
 
   async function scoreContact(contact: Contact) {
     try {
